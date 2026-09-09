@@ -29,9 +29,9 @@ Projet pédagogique — SAÉ 5.02 · BUT R&T 3ᵉ année · IUT Colmar — Unive
 
 ## Vue d'ensemble
 
-Hesstagram est une application web de partage de contenus multimédia développée en binôme avec la méthode **SCRUM** dans le cadre de la SAÉ 5.02 « Piloter un projet informatique » du BUT Réseaux & Télécommunications.
+Hesstagram est une application web de partage de contenus multimédia développée en équipe avec la méthode **SCRUM** dans le cadre de la SAÉ 5.02 « Piloter un projet informatique » du BUT Réseaux & Télécommunications.
 
-Le projet réplique les mécanismes fondamentaux d'une plateforme sociale moderne : publication de photos et vidéos avec filtres et retouche, gestion de la visibilité, interactions sociales, hashtags, messagerie instantanée et modération — le tout construit en **Node.js / TypeScript** avec **SQLite** comme base embarquée et livré sous forme d'**image Docker**.
+Le projet exploite les mécanismes fondamentaux d'une plateforme sociale : publication de photos et vidéos avec filtres et retouche, gestion de la visibilité, interactions sociales, hashtags, messagerie instantanée et modération — le tout construit en **Node.js / TypeScript** avec **SQLite** comme base embarquée et livré sous forme d'**image Docker**.
 
 > **Note de contexte.** Ce projet est un exercice pédagogique. L'application n'est pas destinée à une exposition publique sur Internet. Les données de démonstration sont entièrement fictives. Voir [Sécurité](#-sécurité) et [Conformité RGPD](#-conformité-rgpd) pour les détails.
 
@@ -56,7 +56,7 @@ Le projet réplique les mécanismes fondamentaux d'une plateforme sociale modern
 
 ---
 
-## ✨ Fonctionnalités
+## Fonctionnalités
 
 ### Socle (Must Have)
 
@@ -89,7 +89,7 @@ Le projet réplique les mécanismes fondamentaux d'une plateforme sociale modern
 
 ---
 
-## 🛠 Pile technique
+## Pile technique
 
 | Couche | Technologie | Version |
 |---|---|---|
@@ -113,7 +113,7 @@ Le projet réplique les mécanismes fondamentaux d'une plateforme sociale modern
 
 ---
 
-## 🏗 Architecture
+## Architecture conception
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -149,7 +149,7 @@ L'architecture est **monolithique en couches** : routes → services → reposit
 
 ---
 
-## 🚀 Démarrage rapide
+## Démarrage rapide
 
 ### Prérequis
 
@@ -202,7 +202,7 @@ npm run dev         # serveur avec rechargement automatique
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 Toutes les variables sont dans `.env.example`. Copiez ce fichier en `.env` et remplissez les valeurs marquées `REQUIRED`.
 
@@ -226,7 +226,7 @@ Toutes les variables sont dans `.env.example`. Copiez ce fichier en `.env` et re
 
 ---
 
-## 📦 Scripts disponibles
+## Scripts disponibles
 
 ```bash
 # Développement
@@ -260,7 +260,7 @@ npm start            # Lance dist/server.js
 
 ---
 
-## 🧪 Tests
+## Tests
 
 La suite de tests est organisée en trois niveaux.
 
@@ -351,7 +351,6 @@ Hesstagram est développé selon les principes du **DevSecOps** et de la **sécu
 ### Périmètre non couvert
 
 Par honnêteté intellectuelle, ce projet étudiant **ne couvre pas** :
-- le chiffrement de bout en bout des messages ;
 - la résistance à un DDoS distribué ;
 - le chiffrement de la base au repos ;
 - un test d'intrusion indépendant.
@@ -366,7 +365,7 @@ Créez une issue avec le template [Vulnérabilité](https://github.com/<org>/hes
 
 ## 🛡 Conformité RGPD
 
-Hesstagram applique les principes du RGPD **par conception**, conformément à l'article 25.
+Hesstagram applique les principes du RGPD **par conception**
 
 | Article | Mesure |
 |---|---|
@@ -382,10 +381,6 @@ Le registre des traitements et la politique de confidentialité sont disponibles
 > Les données de démonstration livrées avec l'application sont entièrement fictives. Aucune donnée personnelle réelle n'a été utilisée pendant le développement ou les tests.
 
 ---
-
-## 🤝 Contribuer
-
-Ce projet est développé dans un cadre pédagogique par une équipe fixe. Les contributions externes ne sont pas acceptées. La documentation de la méthode de contribution interne se trouve dans [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ### Pour les membres de l'équipe
 
@@ -404,11 +399,10 @@ npm run lint && npm run typecheck && npm test
 gh pr create --fill
 ```
 
-Consultez le [guide GitHub complet](./docs/docs/contribution/github-workflow.md) pour la stratégie de branches, les conventions de commit et le processus de revue.
 
 ---
 
-## 👥 Équipe
+## Équipe
 
 Promotion BUT RT 3ᵉ année, groupe RT31 — parcours Cyber FA et ROM FA  
 IUT Colmar, Université de Haute-Alsace — Automne 2026  
@@ -439,6 +433,6 @@ Ce projet est réalisé à des fins exclusivement pédagogiques dans le cadre du
 
 **Hesstagram** · SAÉ 5.02 · BUT RT 3 · IUT Colmar · Automne 2026
 
-Fait avec Node.js, SQLite, TypeScript et beaucoup de café
+Fait avec Node.js, SQLite, TypeScript
 
 </div>
