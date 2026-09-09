@@ -1,0 +1,110 @@
+-- Création des tables pour SQLite
+
+CREATE TABLE utilisateur (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    mdp TEXT NOT NULL,
+    date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    role TEXT
+);
+
+CREATE TABLE ami (
+    id_utilisateur1 INTEGER,
+    id_utilisateur2 INTEGER,
+    PRIMARY KEY (id_utilisateur1, id_utilisateur2),
+    FOREIGN KEY (id_utilisateur1) REFERENCES utilisateur(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_utilisateur2) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE publication (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_utilisateur INTEGER,
+    date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    description TEXT,
+    nom_fichier TEXT,
+    type_fichier TEXT,
+    vue INTEGER DEFAULT 0,
+    partage INTEGER DEFAULT 0,
+    republie BOOLEAN DEFAULT 0,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE mod_user (
+    id INTEGER PRIMARY KEY,
+    droit_supprimer_publication BOOLEAN DEFAULT 0,
+    droit_supprimer_commentaire BOOLEAN DEFAULT 0,
+    droit_gerer_signalement BOOLEAN DEFAULT 0,
+    FOREIGN KEY (id) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE admin_user (
+    id INTEGER PRIMARY KEY,
+    droit_supprimer_publication BOOLEAN DEFAULT 0,
+    droit_supprimer_commentaire BOOLEAN DEFAULT 0,
+    droit_gerer_signalement BOOLEAN DEFAULT 0,
+    droit_bannir_utilisateur BOOLEAN DEFAULT 0,
+    droit_modifier_utilisateur BOOLEAN DEFAULT 0,
+    droit_gerer_hashtag BOOLEAN DEFAULT 0,
+    FOREIGN KEY (id) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE message (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_utilisateur INTEGER,
+    id_util INTEGER,
+    message TEXT,
+    vue BOOLEAN DEFAULT 0,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_util) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE notification (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre INTEGER DEFAULT 0,
+    id_utilisateur INTEGER,
+    message TEXT,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE hashtag (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    nombre_utilisation INTEGER DEFAULT 0,
+    id_pub INTEGER,
+    FOREIGN KEY (id_pub) REFERENCES publication(id) ON DELETE CASCADE
+);
+
+CREATE TABLE signalement (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_signale INTEGER,
+    id_signalant INTEGER,
+    raison TEXT,
+    date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_signale) REFERENCES utilisateur(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_signalant) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE "like" (
+    id_pub INTEGER,
+    id_utilisateur INTEGER,
+    PRIMARY KEY (id_pub, id_utilisateur),
+    FOREIGN KEY (id_pub) REFERENCES publication(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE dislike (
+    id_pub INTEGER,
+    id_util INTEGER,
+    PRIMARY KEY (id_pub, id_util),
+    FOREIGN KEY (id_pub) REFERENCES publication(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_util) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
+
+CREATE TABLE commentaire (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_pub INTEGER,
+    id_utilisateur INTEGER,
+    commentaire TEXT,
+    FOREIGN KEY (id_pub) REFERENCES publication(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id) ON DELETE CASCADE
+);
