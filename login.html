@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hesstagram — Connexion</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>Hesstagram</h1>
+    <p style="margin:0;font:400 13px var(--font);color:var(--n700)">Connectez-vous ou créez un compte pour continuer.</p>
+
+    <div class="auth-tabs">
+      <button id="tab-connexion" class="active" type="button">Connexion</button>
+      <button id="tab-inscription" type="button">Créer un compte</button>
+    </div>
+
+    <div id="erreur" class="msg-error hidden"></div>
+
+    <form id="form-auth" style="display:flex;flex-direction:column;gap:16px">
+      <div class="field">
+        <label for="nom">Nom d'utilisateur</label>
+        <input class="input" id="nom" name="nom" autocomplete="username" required minlength="3" placeholder="ex. luca.c">
+      </div>
+      <div class="field">
+        <label for="mdp">Mot de passe</label>
+        <input class="input" id="mdp" name="mdp" type="password" autocomplete="current-password" required minlength="6" placeholder="6 caractères minimum">
+      </div>
+      <div class="field hidden" id="champ-confirm">
+        <label for="mdp2">Confirmer le mot de passe</label>
+        <input class="input" id="mdp2" type="password" autocomplete="new-password" placeholder="Répétez le mot de passe">
+      </div>
+      <button class="btn btn-primary" id="submit" type="submit" style="width:100%">Se connecter</button>
+    </form>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+<script>
+let mode = 'connexion';
+const tabs = { connexion: document.getElementById('tab-connexion'), inscription: document.getElementById('tab-inscription') };
+const erreur = document.getElementById('erreur');
+const champConfirm = document.getElementById('champ-confirm');
+const submit = document.getElementById('submit');
+
+function setMode(m) {
+  mode = m;
+  tabs.connexion.classList.toggle('active', m === 'connexion');
+  tabs.inscription.classList.toggle('active', m === 'inscription');
+  champConfirm.classList.toggle('hidden', m === 'connexion');
+  document.getElementById('mdp2').required = m === 'inscription';
+  submit.textContent = m === 'connexion' ? 'Se connecter' : 'Créer mon compte';
+  erreur.classList.add('hidden');
+}
+tabs.connexion.onclick = () => setMode('connexion');
+tabs.inscription.onclick = () => setMode('inscription');
+
+document.getElementById('form-auth').onsubmit = async e => {
+  e.preventDefault();
+  erreur.classList.add('hidden');
+  const nom = document.getElementById('nom').value.trim();
+  const mdp = document.getElementById('mdp').value;
+  if (mode === 'inscription' && mdp !== document.getElementById('mdp2').value) {
+    erreur.textContent = 'Les deux mots de passe ne correspondent pas.';
+    erreur.classList.remove('hidden');
+    return;
+  }
+  try {
+    await api(mode === 'connexion' ? '/api/connexion' : '/api/inscription',
+      { method: 'POST', body: { nom, mdp } });
+    location.href = '/';
+  } catch (err) {
+    erreur.textContent = err.message;
+    erreur.classList.remove('hidden');
+  }
+};
+
+// Déjà connecté ? → fil d'actualité
+fetch('/api/moi').then(r => { if (r.ok) location.href = '/'; });
+</script>
+</body>
+</html>
