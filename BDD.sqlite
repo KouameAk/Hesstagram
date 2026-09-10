@@ -1,0 +1,96 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE `utilisateur` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `nom` VARCHAR(255),
+    `mdp` VARCHAR(255),
+    `date` DATETIME,
+    `role` VARCHAR(255)
+);
+
+CREATE TABLE `ami` (
+    `id_utilisateur1` INTEGER,
+    `id_utilisateur2` INTEGER,
+    PRIMARY KEY (`id_utilisateur1`, `id_utilisateur2`),
+    FOREIGN KEY (`id_utilisateur1`) REFERENCES `utilisateur` (`id`),
+    FOREIGN KEY (`id_utilisateur2`) REFERENCES `utilisateur` (`id`)
+);
+
+CREATE TABLE publication (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_utilisateur INTEGER,
+    date DATETIME,
+    description TEXT,
+    nom_fichier VARCHAR(255),
+    type_fichier VARCHAR(255),
+    vue INTEGER,
+    "like" INTEGER,
+    "dislike" INTEGER,
+    partage INTEGER,
+    republie BOOLEAN,
+
+    FOREIGN KEY (id_utilisateur)
+        REFERENCES utilisateur(id)
+);
+
+
+CREATE TABLE `message` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `id_utilisateur` INTEGER,
+    `id_util` INTEGER,
+    `message` TEXT,
+    `vue` BOOLEAN,
+    FOREIGN KEY (`id_utilisateur`) REFERENCES `utilisateur` (`id`),
+    FOREIGN KEY (`id_util`) REFERENCES `utilisateur` (`id`)
+);
+
+CREATE TABLE `notification` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `nombre` INTEGER,
+    `id_utilisateur` INTEGER,
+    `message` TEXT,
+    FOREIGN KEY (`id_utilisateur`) REFERENCES `utilisateur` (`id`)
+);
+
+CREATE TABLE `hashtag` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `nom` VARCHAR(255),
+    `nombre_utilisation` INTEGER,
+    `id_pub` INTEGER,
+    FOREIGN KEY (`id_pub`) REFERENCES `publication` (`id`)
+);
+
+CREATE TABLE `signalement` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `id_signalé` INTEGER,
+    `id_signalant` INTEGER,
+    `raison` TEXT,
+    `date` DATETIME,
+    FOREIGN KEY (`id_signalé`) REFERENCES `utilisateur` (`id`),
+    FOREIGN KEY (`id_signalant`) REFERENCES `utilisateur` (`id`)
+);
+
+CREATE TABLE `like` (
+    `id_pub` INTEGER,
+    `id_utilisateur` INTEGER,
+    PRIMARY KEY (`id_pub`, `id_utilisateur`),
+    FOREIGN KEY (`id_pub`) REFERENCES `publication` (`id`),
+    FOREIGN KEY (`id_utilisateur`) REFERENCES `utilisateur` (`id`)
+);
+
+CREATE TABLE `dislike` (
+    `id_pub` INTEGER,
+    `id_util` INTEGER,
+    PRIMARY KEY (`id_pub`, `id_util`),
+    FOREIGN KEY (`id_pub`) REFERENCES `publication` (`id`),
+    FOREIGN KEY (`id_util`) REFERENCES `utilisateur` (`id`)
+);
+
+CREATE TABLE `commentaire` (
+    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+    `id_pub` INTEGER,
+    `id_utilisateur` INTEGER,
+    `commentaire` TEXT,
+    FOREIGN KEY (`id_pub`) REFERENCES `publication` (`id`),
+    FOREIGN KEY (`id_utilisateur`) REFERENCES `utilisateur` (`id`)
+);
