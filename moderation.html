@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hesstagram — Espace modération</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div style="width:min(1440px,100%);margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);box-shadow:0 8px 40px rgba(0,0,0,.18)" id="page" hidden>
+
+  <!-- barre Encre permanente : on ne confond jamais compte perso et outils staff -->
+  <div class="staffbar">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+    <span class="title">Espace modération</span>
+    <span class="sub" id="staff-sub"></span>
+    <button class="back" onclick="location.href='/'">← Retour à Hesstagram</button>
+  </div>
+
+  <main style="flex:1;padding:28px 32px 48px">
+    <div class="section-title">
+      <div>
+        <h2>File de signalements</h2>
+        <p>Signalements reçus sur les comptes. « Classer sans suite » retire le signalement de la file.</p>
+      </div>
+      <span class="tag tag-accent" id="compteur"></span>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:56px">Aperçu</th>
+          <th style="width:160px">Compte signalé</th>
+          <th>Raison</th>
+          <th style="width:90px">Total reçus</th>
+          <th style="width:150px">Signalé par</th>
+          <th style="width:150px">Date</th>
+          <th style="width:160px">Action</th>
+        </tr>
+      </thead>
+      <tbody id="lignes"></tbody>
+    </table>
+
+    <p id="vide" class="hidden" style="font:400 14px var(--font);color:var(--n600);padding:24px 0">
+      Aucun signalement en attente. La file est vide.
+    </p>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+async function chargerSignalements() {
+  const rows = await api('/api/signalements');
+  document.getElementById('compteur').textContent = `${rows.length} en attente`;
+  document.getElementById('vide').classList.toggle('hidden', rows.length > 0);
+
+  const tbody = document.getElementById('lignes');
+  tbody.innerHTML = '';
+  for (const s of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="avatar" style="width:40px;height:40px;line-height:40px;font-size:11px">${initiales(s.signale)}</span></td>
+      <td style="font-weight:600">${escapeHtml(s.signale)}
+        <span style="display:block;font-size:11px;color:var(--n600);font-weight:400">${escapeHtml(s.role_signale)}</span></td>
+      <td>${escapeHtml(s.raison)}</td>
+      <td style="font:800 15px var(--font);color:${s.total_contre >= 3 ? 'var(--accent-700)' : 'var(--ink)'}">${s.total_contre}</td>
+      <td>${escapeHtml(s.signalant)}</td>
+      <td style="font-size:13px;color:var(--n700)">${formatDate(s.date)}</td>
+      <td><button class="btn btn-sm">Classer sans suite</button></td>`;
+    tr.querySelector('button').onclick = async () => {
+      if (!confirm(`Classer sans suite le signalement visant ${s.signale} ?`)) return;
+      await api(`/api/signalements/${s.id}`, { method: 'DELETE' });
+      toast('Signalement classé sans suite');
+      chargerSignalements();
+    };
+    tbody.appendChild(tr);
+  }
+}
+
+(async () => {
+  const moi = await api('/api/moi');
+  if (moi.role !== 'moderateur' && moi.role !== 'administrateur') { location.href = '/'; return; }
+  document.getElementById('staff-sub').textContent =
+    `Connecté en tant que @${moi.nom} · ${moi.role === 'administrateur' ? 'Administrateur' : 'Modérateur'}`;
+  await chargerSignalements();
+  document.getElementById('page').hidden = false;
+})();
+</script>
+</body>
+</html>

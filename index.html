@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hesstagram — Fil d'actualité</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="shell" id="shell" style="visibility:hidden">
+  <!-- barre latérale injectée par app.js -->
+  <main>
+    <div class="feed">
+
+      <!-- composeur -->
+      <div class="card" style="padding:12px;display:flex;gap:12px;align-items:flex-start">
+        <span class="avatar" id="mon-avatar" style="width:36px;height:36px;line-height:36px;background:var(--accent)"></span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <textarea class="input" id="composeur" rows="2" placeholder="Quoi de neuf ?" style="resize:vertical"></textarea>
+          <button class="btn btn-primary" id="publier" style="align-self:flex-end">Publier</button>
+        </div>
+      </div>
+
+      <div id="fil"></div>
+
+      <div style="text-align:center;font:600 12px var(--font);color:var(--n600)">Vous êtes à jour</div>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+let moi;
+
+async function chargerFil() {
+  const pubs = await api('/api/publications');
+  const fil = document.getElementById('fil');
+  fil.innerHTML = '';
+  fil.style.display = 'flex';
+  fil.style.flexDirection = 'column';
+  fil.style.gap = '32px';
+
+  for (const p of pubs) {
+    const art = document.createElement('article');
+    art.className = 'card pub';
+
+    const desc = escapeHtml(p.description)
+      .replace(/#([\p{L}\p{N}_]+)/gu, '<a href="#">#$1</a>');
+
+    art.innerHTML = `
+      <header>
+        <span class="avatar" style="width:44px;height:44px;line-height:44px;font-size:14px">${initiales(p.auteur)}</span>
+        <div style="display:flex;flex-direction:column">
+          <span style="font:600 15px var(--font)">${escapeHtml(p.auteur)}</span>
+          <span style="font:400 12px var(--font);color:var(--n700)">${formatDate(p.date)} · Public</span>
+        </div>
+        ${p.auteur_id !== moi.id ? `<button class="btn btn-ghost btn-signaler" style="margin-left:auto;font-size:12px;color:var(--n700)">Signaler</button>` : ''}
+      </header>
+      <p class="desc">${desc}</p>
+      <div class="actions">
+        <button class="btn btn-icon btn-like ${p.mon_like ? 'liked' : ''}" title="J'aime">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="${p.mon_like ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.75"><path d="M12 20s-8-4.9-8-10.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8 3.2C20 15.1 12 20 12 20z"/></svg>
+        </button>
+        <button class="btn btn-icon btn-dislike ${p.mon_dislike ? 'liked' : ''}" title="Je n'aime pas">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M7 14V4h11l2 7v3h-5l1 5-2 1-4-6z"/></svg>
+        </button>
+        <span class="counts" style="margin-left:8px;padding:0">${p.nb_like} J'aime <span style="color:var(--n600);font-weight:400">·</span> ${p.nb_dislike} Je n'aime pas</span>
+      </div>
+      <div class="coms">
+        ${p.commentaires.map(c => `<div class="com"><b>${escapeHtml(c.auteur)}</b> ${escapeHtml(c.commentaire)}</div>`).join('')}
+        <div style="display:flex;gap:8px;border-top:1px solid var(--divider);padding-top:12px">
+          <input class="input com-input" placeholder="Ajouter un commentaire…">
+          <button class="btn btn-com">Publier</button>
+        </div>
+      </div>`;
+
+    art.querySelector('.btn-like').onclick = async () => {
+      await api(`/api/publications/${p.id}/like`, { method: 'POST' });
+      chargerFil();
+    };
+    art.querySelector('.btn-dislike').onclick = async () => {
+      await api(`/api/publications/${p.id}/dislike`, { method: 'POST' });
+      chargerFil();
+    };
+    art.querySelector('.btn-com').onclick = async () => {
+      const input = art.querySelector('.com-input');
+      const commentaire = input.value.trim();
+      if (!commentaire) return;
+      await api(`/api/publications/${p.id}/commentaires`, { method: 'POST', body: { commentaire } });
+      chargerFil();
+    };
+    art.querySelector('.com-input').onkeydown = e => {
+      if (e.key === 'Enter') art.querySelector('.btn-com').click();
+    };
+    const btnSig = art.querySelector('.btn-signaler');
+    if (btnSig) btnSig.onclick = async () => {
+      const raison = prompt(`Pourquoi signalez-vous ${p.auteur} ?\n(harcèlement, discours haineux, spam, violence…)`);
+      if (!raison || !raison.trim()) return;
+      try {
+        await api('/api/signalements', { method: 'POST', body: { id_signale: p.auteur_id, raison: raison.trim() } });
+        toast('Signalement envoyé. Merci, l’équipe de modération va l’examiner.');
+      } catch (err) { toast(err.message); }
+    };
+
+    fil.appendChild(art);
+  }
+}
+
+(async () => {
+  moi = await api('/api/moi');
+  const shell = document.getElementById('shell');
+  shell.prepend(renderSidebar(moi, 'feed'));
+  document.getElementById('mon-avatar').textContent = initiales(moi.nom);
+  document.getElementById('composeur').placeholder = `Quoi de neuf, ${moi.nom} ?`;
+
+  document.getElementById('publier').onclick = async () => {
+    const zone = document.getElementById('composeur');
+    const description = zone.value.trim();
+    if (!description) return;
+    try {
+      await api('/api/publications', { method: 'POST', body: { description } });
+      zone.value = '';
+      toast('Publication envoyée');
+      chargerFil();
+    } catch (err) { toast(err.message); }
+  };
+
+  await chargerFil();
+  shell.style.visibility = 'visible';
+})();
+</script>
+</body>
+</html>

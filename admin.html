@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hesstagram — Administration</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div style="width:min(1440px,100%);margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);box-shadow:0 8px 40px rgba(0,0,0,.18)" id="page" hidden>
+
+  <div class="staffbar">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+    <span class="title">Espace administration</span>
+    <span class="sub" id="staff-sub"></span>
+    <button class="back" onclick="location.href='/'">← Retour à Hesstagram</button>
+  </div>
+
+  <main style="flex:1;padding:28px 32px 48px">
+    <div class="section-title">
+      <div>
+        <h2>Gestion des rôles</h2>
+        <p>Attribuez les rôles utilisateur, modérateur ou administrateur. Vous ne pouvez pas modifier votre propre rôle.</p>
+      </div>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:56px"></th>
+          <th style="width:60px">Id</th>
+          <th>Compte</th>
+          <th style="width:160px">Inscrit le</th>
+          <th style="width:110px">Publications</th>
+          <th style="width:120px">Signalements</th>
+          <th style="width:200px">Rôle</th>
+          <th style="width:130px"></th>
+        </tr>
+      </thead>
+      <tbody id="lignes"></tbody>
+    </table>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+let moi;
+
+async function chargerUtilisateurs() {
+  const users = await api('/api/utilisateurs');
+  const tbody = document.getElementById('lignes');
+  tbody.innerHTML = '';
+
+  for (const u of users) {
+    const estMoi = u.id === moi.id;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="avatar" style="width:40px;height:40px;line-height:40px;font-size:11px">${initiales(u.nom)}</span></td>
+      <td style="color:var(--n600)">${u.id}</td>
+      <td style="font-weight:600">${escapeHtml(u.nom)} ${estMoi ? '<span class="tag tag-outline">moi</span>' : ''}</td>
+      <td style="font-size:13px;color:var(--n700)">${formatDate(u.date)}</td>
+      <td>${u.nb_publications}</td>
+      <td style="color:${u.nb_signalements >= 3 ? 'var(--accent-700)' : 'inherit'};font-weight:${u.nb_signalements ? 600 : 400}">${u.nb_signalements}</td>
+      <td>
+        <select class="input" ${estMoi ? 'disabled' : ''}>
+          <option value="utilisateur">Utilisateur</option>
+          <option value="moderateur">Modérateur</option>
+          <option value="administrateur">Administrateur</option>
+        </select>
+      </td>
+      <td><button class="btn btn-sm btn-primary" ${estMoi ? 'disabled' : ''}>Enregistrer</button></td>`;
+
+    const select = tr.querySelector('select');
+    select.value = u.role;
+    tr.querySelector('button').onclick = async () => {
+      if (select.value === u.role) { toast('Rôle inchangé'); return; }
+      if (!confirm(`Donner le rôle « ${select.value} » à ${u.nom} ?`)) { select.value = u.role; return; }
+      try {
+        await api(`/api/utilisateurs/${u.id}/role`, { method: 'PUT', body: { role: select.value } });
+        toast(`${u.nom} est maintenant ${select.value}`);
+        chargerUtilisateurs();
+      } catch (err) { toast(err.message); select.value = u.role; }
+    };
+    tbody.appendChild(tr);
+  }
+}
+
+(async () => {
+  moi = await api('/api/moi');
+  if (moi.role !== 'administrateur') { location.href = '/'; return; }
+  document.getElementById('staff-sub').textContent = `Connecté en tant que @${moi.nom} · Administrateur`;
+  await chargerUtilisateurs();
+  document.getElementById('page').hidden = false;
+})();
+</script>
+</body>
+</html>
