@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-d01f5f11-0573-45fd-abf3-c4761ba53701/styles.css">
+<script src="_ds/modernist-d01f5f11-0573-45fd-abf3-c4761ba53701/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  body{margin:0;background:#e6e4e4}
+  a{color:var(--color-accent);text-decoration:none}
+  a:hover{color:var(--color-accent-700);text-decoration:underline}
+  button{font-family:var(--font-body);cursor:pointer}
+</style>
+</helmet>
+
+<div style="padding:40px;font-family:var(--font-body);color:var(--color-text)">
+
+  <div style="display:flex;align-items:baseline;gap:12px;width:1440px;margin:0 0 12px">
+    <span style="font:800 11px/1 var(--font-heading);letter-spacing:.12em;text-transform:uppercase;background:var(--color-text);color:var(--color-bg);padding:5px 8px">Profil modérateur</span>
+    <sc-if value="{{ isQueue }}" hint-placeholder-val="{{ true }}"><span style="font:600 12px var(--font-body);color:var(--color-neutral-700)">M-02 / File de signalements / Desktop 1440 × 900</span></sc-if>
+    <sc-if value="{{ isDetail }}"><span style="font:600 12px var(--font-body);color:var(--color-neutral-700)">M-03 / Détail d'un signalement / Desktop 1440 × 900</span></sc-if>
+    <span style="margin-left:auto;font:400 11px var(--font-body);color:var(--color-neutral-600)">Cliquez une ligne de la file pour ouvrir le détail et prononcer une décision</span>
+  </div>
+
+  <div style="position:relative;width:1440px;height:900px;display:flex;flex-direction:column;background:var(--color-bg);box-shadow:var(--shadow-lg);overflow:hidden">
+
+    <!-- barre Encre permanente -->
+    <div style="display:flex;align-items:center;gap:16px;background:var(--color-text);color:var(--color-bg);padding:11px 20px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+      <span style="font:800 13px var(--font-heading);letter-spacing:.06em;text-transform:uppercase">Espace modération</span>
+      <span style="font:400 12px var(--font-body);color:color-mix(in srgb,var(--color-bg) 60%,transparent)">Connecté en tant que @marc.r · Modérateur</span>
+      <button style="all:unset;margin-left:auto;display:flex;align-items:center;gap:6px;font:600 12px var(--font-body);color:var(--color-bg);border:1px solid color-mix(in srgb,var(--color-bg) 40%,transparent);padding:5px 10px;cursor:pointer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5l-7 7 7 7M4 12h16"/></svg>
+        Retour à Hesstagram
+      </button>
+    </div>
+
+    <div style="flex:1;display:grid;grid-template-columns:220px 1fr;overflow:hidden">
+
+      <!-- sous-navigation -->
+      <nav style="border-right:2px solid var(--color-divider);padding:20px 12px;display:flex;flex-direction:column;gap:2px">
+        <div style="font:800 10px var(--font-heading);letter-spacing:.12em;text-transform:uppercase;color:var(--color-neutral-600);padding:0 8px 10px">Modération</div>
+        <div style="display:flex;align-items:center;padding:8px;font:600 13px var(--font-body);color:var(--color-neutral-700)">Tableau de bord</div>
+        <button onClick="{{ goQueue }}" style="all:unset;display:flex;align-items:center;padding:8px;font:600 13px var(--font-body);color:{{ cQueue }};background:{{ bgQueue }};cursor:pointer">
+          <span>File de signalements</span>
+          <span style="margin-left:auto;background:var(--color-accent);color:var(--color-bg);font:800 10px var(--font-heading);padding:2px 6px">{{ pending }}</span>
+        </button>
+        <div style="display:flex;align-items:center;padding:8px;font:600 13px var(--font-body);color:var(--color-neutral-700)">Contenus retirés</div>
+        <div style="display:flex;align-items:center;padding:8px;font:600 13px var(--font-body);color:var(--color-neutral-700)">Mon historique</div>
+        <hr class="hr" style="margin:14px 8px">
+        <div style="padding:0 8px;font:400 11px/1.6 var(--font-body);color:var(--color-neutral-600)">Les entrées d'administration (comptes, rôles, hashtags, journal d'audit) n'apparaissent que pour un compte administrateur.</div>
+      </nav>
+
+      <!-- ══ M-02 File ══ -->
+      <sc-if value="{{ isQueue }}" hint-placeholder-val="{{ true }}">
+      <main data-screen-label="M-02" style="overflow-y:auto;padding:28px 32px 48px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--color-divider);padding-bottom:14px;margin-bottom:20px">
+          <div>
+            <h2 style="margin:0 0 4px">File de signalements</h2>
+            <p style="margin:0;font:400 13px var(--font-body);color:var(--color-neutral-700)">Les signalements multiples d'un même contenu sont regroupés sur une seule ligne. Tri : les plus signalés, puis les plus anciens.</p>
+          </div>
+          <label class="radio" style="font-size:12px;gap:6px"><input type="checkbox"><span class="dot" style="border-radius:0"></span>Pris en charge par moi</label>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;margin-bottom:24px">
+          <div class="field" style="width:200px"><label>Statut</label>
+            <div class="seg" style="width:100%">
+              <label class="seg-opt" style="flex:1;justify-content:flex-start"><input type="radio" name="st" checked>En attente</label>
+              <label class="seg-opt" style="flex:1;justify-content:flex-start"><input type="radio" name="st">Tous</label>
+            </div>
+          </div>
+          <div class="field" style="width:170px"><label>Type de contenu</label><select class="input"><option>Tous les types</option><option>Publication</option><option>Commentaire</option><option>Profil</option><option>Message</option><option>Groupe</option></select></div>
+          <div class="field" style="width:190px"><label>Motif</label><select class="input"><option>Tous les motifs</option><option>Harcèlement</option><option>Discours haineux</option><option>Spam</option><option>Violence</option></select></div>
+          <div class="field" style="width:150px"><label>Période</label><select class="input"><option>7 derniers jours</option><option>24 h</option><option>30 jours</option></select></div>
+          <button class="btn btn-secondary">Réinitialiser</button>
+        </div>
+
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width:56px">Aperçu</th>
+              <th style="width:110px">Type</th>
+              <th>Motif principal</th>
+              <th style="width:80px">Signal.</th>
+              <th style="width:130px">Auteur</th>
+              <th style="width:110px">1er signalement</th>
+              <th style="width:110px">Statut</th>
+              <th style="width:180px">Responsable</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+              <tr onClick="{{ r.open }}" style="cursor:pointer;background:{{ r.rowBg }}">
+                <td><span style="display:block;width:40px;height:40px;background:{{ r.thumbBg }};color:var(--color-bg);font:800 9px/40px var(--font-heading);text-align:center">{{ r.thumbLabel }}</span></td>
+                <td style="font-weight:600">{{ r.type }}</td>
+                <td>
+                  <span style="display:block;font-weight:600">{{ r.motif }}</span>
+                  <span style="display:block;font-size:12px;color:var(--color-neutral-700);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.extrait }}</span>
+                </td>
+                <td style="font:800 15px var(--font-heading);color:{{ r.countColor }}">{{ r.count }}</td>
+                <td>{{ r.auteur }}</td>
+                <td style="font-size:13px;color:var(--color-neutral-700)">{{ r.date }}</td>
+                <td><span class="tag {{ r.tagClass }}">{{ r.statut }}</span></td>
+                <td>
+                  <sc-if value="{{ r.free }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ r.take }}" class="btn btn-primary" style="padding:5px 9px;font-size:12px">Prendre en charge</button>
+                  </sc-if>
+                  <sc-if value="{{ r.owned }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px">
+                      <span style="width:22px;height:22px;background:var(--color-neutral-700);color:var(--color-bg);font:800 8px/22px var(--font-heading);text-align:center">{{ r.ownerInitials }}</span>
+                      {{ r.owner }}
+                    </span>
+                  </sc-if>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+
+        <p style="margin:20px 0 0;font:400 12px var(--font-body);color:var(--color-neutral-600)">Une ligne déjà prise par un collègue ne peut pas être traitée sans « Reprendre » (confirmation) — cela évite que deux modérateurs traitent le même signalement.</p>
+      </main>
+      </sc-if>
+
+      <!-- ══ M-03 Détail ══ -->
+      <sc-if value="{{ isDetail }}">
+      <main data-screen-label="M-03" style="display:grid;grid-template-columns:1fr 340px 320px;overflow:hidden">
+
+        <!-- contenu -->
+        <section style="overflow-y:auto;padding:24px;border-right:1px solid var(--color-divider)">
+          <button onClick="{{ goQueue }}" class="btn btn-ghost" style="margin-bottom:14px;font-size:12px">← Retour à la file</button>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <h4 style="margin:0">Le contenu signalé</h4>
+            <span class="tag {{ sel.tagClass }}">{{ sel.statut }}</span>
+          </div>
+
+          <article style="border:1px solid var(--color-divider);background:var(--color-surface)">
+            <header style="display:flex;align-items:center;gap:10px;padding:12px">
+              <span style="width:40px;height:40px;flex:none;background:var(--color-neutral-800);color:var(--color-bg);font:800 12px/40px var(--font-heading);text-align:center">{{ sel.authorInitials }}</span>
+              <div style="display:flex;flex-direction:column">
+                <span style="font:600 14px var(--font-body)">{{ sel.auteur }}</span>
+                <span style="font:400 12px var(--font-body);color:var(--color-neutral-700)">{{ sel.contentDate }}</span>
+              </div>
+            </header>
+
+            <sc-if value="{{ sel.isMedia }}" hint-placeholder-val="{{ true }}">
+              <div style="position:relative;width:100%;aspect-ratio:4/5;background:var(--color-neutral-300)">
+                <div class="grayscale" style="position:absolute;inset:0;filter:grayscale(1) blur({{ blurPx }})">
+                  <image-slot id="m03-media" shape="rect" placeholder="Média signalé 4:5"></image-slot>
+                </div>
+                <sc-if value="{{ hidden }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:color-mix(in srgb,var(--color-neutral-900) 35%,transparent)">
+                    <span style="font:800 12px var(--font-heading);letter-spacing:.08em;text-transform:uppercase;background:var(--color-text);color:var(--color-bg);padding:8px 12px">Média masqué par défaut</span>
+                    <button onClick="{{ reveal }}" class="btn btn-primary">Afficher le contenu</button>
+                  </div>
+                </sc-if>
+              </div>
+              <p style="margin:0;padding:12px;font:400 13px/1.55 var(--font-body)">{{ sel.extrait }}</p>
+            </sc-if>
+
+            <sc-if value="{{ sel.isComment }}" hint-placeholder-val="{{ false }}">
+              <div style="margin:0 12px 12px;border:2px solid var(--color-accent);padding:12px;background:var(--color-bg)">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span style="font:600 13px var(--font-body)">{{ sel.auteur }}</span>
+                  <span class="tag tag-outline">Commentaire signalé</span>
+                </div>
+                <p style="margin:0;font:400 14px/1.55 var(--font-body)">{{ sel.extrait }}</p>
+              </div>
+              <div style="padding:0 12px 12px">
+                <div style="font:800 10px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:8px">Contexte — commentaire parent</div>
+                <p style="margin:0 0 12px;font:400 13px/1.5 var(--font-body);color:var(--color-neutral-700)"><span style="font-weight:600">lea.wagner</span> Franchement ce parcours est accessible à tout le monde, il ne faut pas exagérer.</p>
+                <div style="font:800 10px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600);margin-bottom:8px">Publication d'origine</div>
+                <div style="display:flex;gap:10px;opacity:.65">
+                  <div class="grayscale" style="width:84px;height:84px;flex:none;background:var(--color-text)">
+                    <image-slot id="m03-parent" shape="rect" placeholder="1:1"></image-slot>
+                  </div>
+                  <p style="margin:0;font:400 12px/1.5 var(--font-body);color:var(--color-neutral-700)">lea.wagner · il y a 2 j<br>Trois jours de crête, de la brume jusqu'au Hohneck.</p>
+                </div>
+              </div>
+            </sc-if>
+          </article>
+        </section>
+
+        <!-- contexte -->
+        <section style="overflow-y:auto;padding:24px;border-right:1px solid var(--color-divider)">
+          <h4 style="margin:0 0 16px">Le contexte</h4>
+
+          <div style="font:800 10px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600);border-bottom:2px solid var(--color-divider);padding-bottom:6px;margin-bottom:12px">Signalements reçus · {{ sel.count }}</div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px">
+            <div style="border-left:0;border-top:1px solid var(--color-divider);padding-top:10px">
+              <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 13px var(--font-body)">{{ sel.motif }}</span><span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">{{ sel.date }}</span></div>
+              <p style="margin:4px 0 0;font:400 12px/1.5 var(--font-body);color:var(--color-neutral-700)">« Ce message vise directement une personne du groupe. »</p>
+              <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">Signalant masqué pour les modérateurs</span>
+            </div>
+            <div style="border-top:1px solid var(--color-divider);padding-top:10px">
+              <div style="display:flex;align-items:baseline;gap:8px"><span style="font:600 13px var(--font-body)">Discours haineux</span><span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">il y a 3 h</span></div>
+              <p style="margin:4px 0 0;font:400 12px/1.5 var(--font-body);color:var(--color-neutral-700)">Aucune précision fournie.</p>
+            </div>
+          </div>
+
+          <div style="font:800 10px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600);border-bottom:2px solid var(--color-divider);padding-bottom:6px;margin-bottom:12px">Fiche de l'auteur</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font:400 13px var(--font-body);margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--color-neutral-700)">Compte</span><span style="font-weight:600">{{ sel.auteur }}</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--color-neutral-700)">Inscrit le</span><span>{{ sel.inscrit }}</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--color-neutral-700)">Rôle</span><span style="font-weight:600">{{ sel.role }}</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--color-neutral-700)">Sanctions précédentes</span><span style="font-weight:600;color:var(--color-accent-700)">{{ sel.sanctions }}</span></div>
+            <a href="#historique" style="font-size:12px">Voir l'historique des sanctions</a>
+          </div>
+
+          <div style="font:800 10px var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-600);border-bottom:2px solid var(--color-divider);padding-bottom:6px;margin-bottom:12px">Autres signalements du même auteur</div>
+          <div style="display:flex;flex-direction:column">
+            <div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+              <span style="width:30px;height:30px;background:var(--color-neutral-500);color:var(--color-bg);font:800 8px/30px var(--font-heading);text-align:center">CMT</span>
+              <span style="flex:1;font:400 12px/1.4 var(--font-body)">Commentaire — Spam<br><span style="color:var(--color-neutral-600)">Classé sans suite, 12/08</span></span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;padding:9px 0">
+              <span style="width:30px;height:30px;background:var(--color-neutral-500);color:var(--color-bg);font:800 8px/30px var(--font-heading);text-align:center">PUB</span>
+              <span style="flex:1;font:400 12px/1.4 var(--font-body)">Publication — Violence<br><span style="color:var(--color-neutral-600)">Contenu retiré, 02/09</span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- décision -->
+        <section style="overflow-y:auto;padding:24px;background:var(--color-surface)">
+          <h4 style="margin:0 0 16px">La décision</h4>
+
+          <sc-if value="{{ sel.escalade }}" hint-placeholder-val="{{ false }}">
+            <div style="background:var(--color-accent-100);border:1px solid var(--color-accent-300);padding:12px;margin-bottom:16px;font:400 12px/1.5 var(--font-body);color:var(--color-accent-800)">
+              <span style="font-weight:600">L'auteur est modérateur.</span> Les autres actions sont désactivées : l'escalade vers un administrateur est obligatoire.
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+            <button onClick="{{ pickClasser }}" class="btn btn-secondary btn-block" disabled="{{ sel.escalade }}" style="background:{{ bgClasser }};margin-top:0">Classer sans suite</button>
+            <button onClick="{{ pickRetirer }}" class="btn btn-secondary btn-block" disabled="{{ sel.escalade }}" style="background:{{ bgRetirer }};margin-top:0">Retirer le contenu</button>
+            <button onClick="{{ pickAvertir }}" class="btn btn-secondary btn-block" disabled="{{ sel.escalade }}" style="background:{{ bgAvertir }};margin-top:0">Avertir l'auteur</button>
+            <button onClick="{{ pickSuspendre }}" class="btn btn-secondary btn-block" disabled="{{ sel.escalade }}" style="background:{{ bgSuspendre }};margin-top:0">Suspendre le compte</button>
+            <button onClick="{{ pickEscalader }}" class="btn btn-secondary btn-block" style="background:{{ bgEscalader }};margin-top:0">Escalader à un administrateur</button>
+          </div>
+
+          <sc-if value="{{ showSuspendDuration }}" hint-placeholder-val="{{ false }}">
+            <div class="field" style="margin-bottom:16px"><label>Durée de la suspension</label>
+              <div class="seg" style="width:100%">
+                <label class="seg-opt" style="flex:1;justify-content:flex-start"><input type="radio" name="dur" checked>24 h</label>
+                <label class="seg-opt" style="flex:1;justify-content:flex-start"><input type="radio" name="dur">7 jours</label>
+              </div>
+              <span style="display:block;margin-top:6px;font:400 11px var(--font-body);color:var(--color-neutral-600)">Au-delà de 7 jours, la décision revient à un administrateur.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasDecision }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div class="field"><label>Règle enfreinte</label>
+                <select class="input"><option>Harcèlement ou intimidation</option><option>Discours haineux</option><option>Spam</option><option>Violence</option><option>Nudité ou contenu sexuel</option></select>
+              </div>
+              <div class="field"><label>Commentaire interne (obligatoire)</label>
+                <textarea class="input" style="min-height:80px" placeholder="Visible uniquement par l'équipe et inscrit au journal d'audit."></textarea>
+              </div>
+              <label class="radio" style="font-size:12px;align-items:flex-start;gap:8px"><input type="checkbox" checked><span class="dot" style="border-radius:0;margin-top:2px"></span><span>Notifier les personnes ayant signalé</span></label>
+              <label class="radio" style="font-size:12px;align-items:flex-start;gap:8px"><input type="checkbox" checked><span class="dot" style="border-radius:0;margin-top:2px"></span><span>Enchaîner sur le signalement suivant</span></label>
+
+              <div style="border-top:2px solid var(--color-divider);padding-top:14px">
+                <p style="margin:0 0 10px;font:400 12px/1.55 var(--font-body);color:var(--color-neutral-700)">{{ resume }}</p>
+                <button onClick="{{ confirm }}" class="btn btn-primary btn-block" style="margin-top:0">{{ decisionLabel }}</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ noDecision }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;font:400 12px/1.6 var(--font-body);color:var(--color-neutral-700)">Choisissez une action ci-dessus. Chaque décision demande une règle et un commentaire interne, puis une confirmation qui résume son effet. Toutes sont inscrites au journal d'audit.</p>
+          </sc-if>
+        </section>
+      </main>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;pointer-events:none;padding:20px">
+        <span style="background:var(--color-text);color:var(--color-bg);font:600 13px var(--font-body);padding:11px 16px;box-shadow:var(--shadow-md)">{{ toast }}</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <p style="width:1440px;margin:16px 0 0;font:400 12px/1.6 var(--font-body);color:var(--color-neutral-700)">
+    L'espace staff reprend la palette Modernist avec la barre supérieure Encre permanente, pour qu'un membre de l'équipe ne confonde jamais son compte personnel et ses outils. Les médias signalés arrivent floutés ; l'affichage est un geste volontaire.
+  </p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1520,&quot;height&quot;:1020}}">
+class Component extends DCLogic {
+  state = { screen: 'queue', sel: 'r2', decision: null, revealed: false, toast: '', taken: {} };
+
+  reports = {
+    r1: {
+      id: 'r1', type: 'Publication', motif: 'Violence', count: 9, auteur: 'yanis.b', authorInitials: 'YB',
+      extrait: 'Séquence filmée pendant une altercation à la sortie du stade.',
+      date: 'il y a 6 h', contentDate: 'publié le 08/09 à 21 h 14', statut: 'En attente', kind: 'media',
+      thumbLabel: 'PUB', inscrit: '14/02/2025', role: 'Utilisateur', sanctions: '2 sanctions'
+    },
+    r2: {
+      id: 'r2', type: 'Commentaire', motif: 'Harcèlement ou intimidation', count: 6, auteur: 'tom.mercier', authorInitials: 'TM',
+      extrait: 'Tu ferais mieux de rester chez toi, personne ne veut te voir en montagne.',
+      date: 'il y a 4 h', contentDate: 'commenté le 09/09 à 08 h 41', statut: 'En cours', kind: 'comment',
+      thumbLabel: 'CMT', inscrit: '03/11/2024', role: 'Utilisateur', sanctions: '1 avertissement'
+    },
+    r3: {
+      id: 'r3', type: 'Message', motif: 'Discours haineux', count: 3, auteur: 'marion.p', authorInitials: 'MP',
+      extrait: 'Extrait de conversation de groupe « Traversée des crêtes ».',
+      date: 'il y a 1 j', contentDate: 'envoyé le 08/09 à 19 h 03', statut: 'En attente', kind: 'media',
+      thumbLabel: 'MSG', inscrit: '27/06/2025', role: 'Modérateur', sanctions: 'Aucune', escalade: true
+    },
+    r4: {
+      id: 'r4', type: 'Profil', motif: 'Spam', count: 2, auteur: 'promo_outdoor', authorInitials: 'PO',
+      extrait: 'Compte de revente, liens externes dans la biographie.',
+      date: 'il y a 2 j', contentDate: 'inscrit le 01/09', statut: 'En attente', kind: 'media',
+      thumbLabel: 'PRO', inscrit: '01/09/2026', role: 'Utilisateur', sanctions: 'Aucune'
+    }
+  };
+
+  tagFor(statut) {
+    if (statut === 'En attente') return 'tag-outline';
+    if (statut === 'En cours') return 'tag-accent';
+    if (statut === 'Escaladé') return 'tag-accent-2';
+    return 'tag-neutral';
+  }
+
+  labels = {
+    classer: 'Classer sans suite',
+    retirer: 'Retirer le contenu',
+    avertir: "Avertir l'auteur",
+    suspendre: 'Suspendre le compte',
+    escalader: 'Escalader à un administrateur'
+  };
+
+  pick(k) { return () => this.setState({ decision: k }); }
+
+  renderVals() {
+    const s = this.state, red = 'var(--color-accent)';
+    const selRaw = this.reports[s.sel];
+    const statutOf = r => s.taken[r.id] || r.statut;
+
+    const rows = Object.keys(this.reports).map(id => {
+      const r = this.reports[id], statut = statutOf(r);
+      const owned = statut !== 'En attente';
+      return {
+        ...r, statut, tagClass: this.tagFor(statut),
+        free: !owned, owned,
+        owner: statut === 'En cours' ? '@marc.r (moi)' : statut === 'Escaladé' ? 'En attente admin' : '@marc.r',
+        ownerInitials: 'MR',
+        rowBg: id === s.sel ? 'color-mix(in srgb, var(--color-text) 5%, transparent)' : 'transparent',
+        thumbBg: r.kind === 'comment' ? 'var(--color-neutral-600)' : 'var(--color-text)',
+        countColor: r.count >= 6 ? 'var(--color-accent-700)' : 'var(--color-text)',
+        open: () => this.setState({ screen: 'detail', sel: id, decision: null, revealed: false }),
+        take: e => { e.stopPropagation(); this.setState(st => ({ taken: { ...st.taken, [id]: 'En cours' }, toast: 'Signalement pris en charge' })); this.clearToast(); }
+      };
+    });
+
+    const statut = statutOf(selRaw);
+    const sel = { ...selRaw, statut, tagClass: this.tagFor(statut), isMedia: selRaw.kind !== 'comment', isComment: selRaw.kind === 'comment', escalade: !!selRaw.escalade };
+    const d = selRaw.escalade ? (s.decision === 'escalader' ? 'escalader' : s.decision) : s.decision;
+    const bg = k => d === k ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent';
+
+    const resumeMap = {
+      classer: `Classer sans suite le signalement visant @${selRaw.auteur} ? Le contenu reste en ligne. Cette action sera inscrite au journal d'audit.`,
+      retirer: `Retirer ce contenu de @${selRaw.auteur} ? Il sera masqué pour tous et conservé pour l'audit. L'auteur sera notifié.`,
+      avertir: `Avertir @${selRaw.auteur} ? L'auteur recevra une notification de modération non désactivable.`,
+      suspendre: `Suspendre @${selRaw.auteur} pour 24 h ? Le compte ne pourra plus publier ni écrire pendant la durée choisie.`,
+      escalader: `Escalader à un administrateur ? Le signalement quitte votre file et apparaît dans « Actions en attente d'un admin ».`
+    };
+
+    return {
+      isQueue: s.screen === 'queue', isDetail: s.screen === 'detail',
+      goQueue: () => this.setState({ screen: 'queue' }),
+      cQueue: s.screen ? red : red,
+      bgQueue: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+      pending: rows.filter(r => r.statut === 'En attente').length,
+      rows, sel,
+      hidden: !s.revealed,
+      blurPx: s.revealed ? '0px' : '20px',
+      reveal: () => this.setState({ revealed: true }),
+      pickClasser: this.pick('classer'), pickRetirer: this.pick('retirer'),
+      pickAvertir: this.pick('avertir'), pickSuspendre: this.pick('suspendre'),
+      pickEscalader: this.pick('escalader'),
+      bgClasser: bg('classer'), bgRetirer: bg('retirer'), bgAvertir: bg('avertir'),
+      bgSuspendre: bg('suspendre'), bgEscalader: bg('escalader'),
+      showSuspendDuration: d === 'suspendre',
+      hasDecision: !!d, noDecision: !d,
+      decisionLabel: d ? this.labels[d] : '',
+      resume: d ? resumeMap[d] : '',
+      confirm: () => {
+        const next = d === 'escalader' ? 'Escaladé' : d === 'classer' ? 'Classé sans suite' : 'Traité';
+        this.setState(st => ({ screen: 'queue', decision: null, taken: { ...st.taken, [selRaw.id]: next }, toast: 'Signalement traité' }));
+        this.clearToast();
+      },
+      toast: s.toast
+    };
+  }
+
+  clearToast() {
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: '' }), 2600);
+  }
+
+  componentWillUnmount() { clearTimeout(this._t); }
+}
+
+</script>
+</body>
+</html>

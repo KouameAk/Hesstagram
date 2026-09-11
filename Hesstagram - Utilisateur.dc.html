@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-d01f5f11-0573-45fd-abf3-c4761ba53701/styles.css">
+<script src="_ds/modernist-d01f5f11-0573-45fd-abf3-c4761ba53701/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  body{margin:0;background:#e6e4e4}
+  a{color:var(--color-accent);text-decoration:none}
+  a:hover{color:var(--color-accent-700);text-decoration:underline}
+  button{font-family:var(--font-body);cursor:pointer}
+  .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+</style>
+</helmet>
+
+<div style="padding:40px;font-family:var(--font-body);color:var(--color-text)">
+
+  <div style="display:flex;align-items:baseline;gap:12px;width:1440px;margin:0 0 12px">
+    <span style="font:800 11px/1 var(--font-heading);letter-spacing:.12em;text-transform:uppercase;background:var(--color-text);color:var(--color-bg);padding:5px 8px">Profil utilisateur</span>
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}"><span style="font:600 12px var(--font-body);color:var(--color-neutral-700)">U-01 / Fil d'actualité / Desktop 1440 × 900</span></sc-if>
+    <sc-if value="{{ isMsg }}"><span style="font:600 12px var(--font-body);color:var(--color-neutral-700)">U-11 / Messagerie / Desktop 1440 × 900</span></sc-if>
+    <span style="margin-left:auto;font:400 11px var(--font-body);color:var(--color-neutral-600)">Prototype cliquable — barre latérale, réactions, commentaires, conversations</span>
+  </div>
+
+  <div style="width:1440px;height:900px;display:grid;grid-template-columns:244px 1fr;background:var(--color-bg);box-shadow:var(--shadow-lg);overflow:hidden">
+
+    <!-- ══ Barre latérale ══ -->
+    <nav style="border-right:2px solid var(--color-divider);padding:24px 16px;display:flex;flex-direction:column;gap:4px">
+      <div style="font:800 20px/1 var(--font-heading);letter-spacing:-.02em;padding:0 8px 24px">Hesstagram</div>
+
+      <button onClick="{{ goHome }}" style="all:unset;display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:{{ cHome }};background:{{ bgHome }};cursor:pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>
+        <span>Accueil</span>
+      </button>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:var(--color-neutral-700)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+        <span>Explorer</span>
+      </div>
+
+      <button onClick="{{ goMsg }}" style="all:unset;display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:{{ cMsg }};background:{{ bgMsg }};cursor:pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 4h16v12H9l-5 4z"/></svg>
+        <span>Messages</span>
+        <span style="margin-left:auto;background:var(--color-accent);color:var(--color-bg);font:800 11px var(--font-heading);padding:2px 6px">3</span>
+      </button>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:var(--color-neutral-700)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+        <span>Notifications</span>
+        <span style="margin-left:auto;background:var(--color-accent);color:var(--color-bg);font:800 11px var(--font-heading);padding:2px 6px">5</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:var(--color-neutral-700)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 4h16v16H4z"/><path d="M12 8v8M8 12h8"/></svg>
+        <span>Créer</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:var(--color-neutral-700)">
+        <span style="width:20px;height:20px;background:var(--color-neutral-800);color:var(--color-bg);font:800 9px/20px var(--font-heading);text-align:center">LC</span>
+        <span>Profil</span>
+      </div>
+
+      <hr class="hr" style="margin:16px 8px">
+
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 8px;font:600 14px var(--font-body);color:var(--color-neutral-700)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+        <span>Paramètres</span>
+      </div>
+
+      <div style="margin-top:auto;padding:0 8px;font:400 10px/1.5 var(--font-body);color:var(--color-neutral-600)">Luca Colombo<br>@luca.c</div>
+    </nav>
+
+    <!-- ══ U-01 Fil d'actualité ══ -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <main data-screen-label="U-01" style="overflow-y:auto;height:900px">
+      <div style="display:grid;grid-template-columns:630px 320px;gap:48px;justify-content:center;padding:32px 32px 64px">
+
+        <div style="display:flex;flex-direction:column;gap:32px">
+
+          <!-- composeur -->
+          <div style="display:flex;align-items:center;gap:12px;border:1px solid var(--color-divider);background:var(--color-surface);padding:12px">
+            <span style="width:36px;height:36px;flex:none;background:var(--color-accent);color:var(--color-bg);font:800 12px/36px var(--font-heading);text-align:center">LC</span>
+            <span style="flex:1;font:400 15px var(--font-body);color:var(--color-neutral-600)">Quoi de neuf, Luca ?</span>
+            <button class="btn btn-primary">Publier</button>
+          </div>
+
+          <!-- ── publication 1 : carrousel ── -->
+          <article style="border:1px solid var(--color-divider);background:var(--color-surface)">
+            <header style="display:flex;align-items:center;gap:12px;padding:12px">
+              <span style="width:44px;height:44px;flex:none;background:var(--color-neutral-800);color:var(--color-bg);font:800 14px/44px var(--font-heading);text-align:center">LW</span>
+              <div style="display:flex;flex-direction:column">
+                <span style="font:600 15px var(--font-body)">lea.wagner</span>
+                <span style="display:flex;align-items:center;gap:6px;font:400 12px var(--font-body);color:var(--color-neutral-700)">
+                  il y a 2 h
+                  <span style="color:var(--color-neutral-400)">·</span>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+                  Public
+                </span>
+              </div>
+              <button class="btn btn-icon" style="margin-left:auto">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+              </button>
+            </header>
+
+            <div style="position:relative;width:100%;aspect-ratio:4/5;background:var(--color-text)">
+              <div class="grayscale" style="position:absolute;inset:0">
+                <image-slot id="u01-p1" shape="rect" placeholder="Photo 4:5 — paysage des Vosges"></image-slot>
+              </div>
+              <div style="position:absolute;top:12px;right:12px;background:var(--color-text);color:var(--color-bg);font:800 11px var(--font-heading);padding:4px 8px;pointer-events:none">1/3</div>
+              <div style="position:absolute;bottom:14px;left:0;right:0;display:flex;justify-content:center;gap:6px;pointer-events:none">
+                <span style="width:7px;height:7px;background:var(--color-bg)"></span>
+                <span style="width:7px;height:7px;background:color-mix(in srgb,var(--color-bg) 45%,transparent)"></span>
+                <span style="width:7px;height:7px;background:color-mix(in srgb,var(--color-bg) 45%,transparent)"></span>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:4px;padding:10px 8px;border-bottom:1px solid var(--color-divider)">
+              <button onClick="{{ likeP1 }}" class="btn btn-icon" style="color:{{ p1LikeColor }}">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="{{ p1LikeFill }}" stroke="currentColor" stroke-width="1.75"><path d="M12 20s-8-4.9-8-10.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8 3.2C20 15.1 12 20 12 20z"/></svg>
+              </button>
+              <button onClick="{{ dislikeP1 }}" class="btn btn-icon" style="color:{{ p1DisColor }}">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M7 14V4h11l2 7v3h-5l1 5-2 1-4-6z"/></svg>
+              </button>
+              <button onClick="{{ toggleC1 }}" class="btn btn-icon">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 4h16v12H9l-5 4z"/></svg>
+              </button>
+              <button class="btn btn-icon">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 9V6h13l-3-3M20 15v3H7l3 3"/></svg>
+              </button>
+            </div>
+
+            <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+              <div style="font:600 13px var(--font-body)">
+                <span>{{ p1Likes }} J'aime</span>
+                <span style="color:var(--color-neutral-500);font-weight:400"> · </span>
+                <span>{{ p1Dis }} Je n'aime pas</span>
+              </div>
+              <p style="margin:0;font:400 14px/1.55 var(--font-body)">
+                <span style="font-weight:600">lea.wagner</span>
+                Trois jours de crête, de la brume jusqu'au Hohneck. Le meilleur moment de l'année pour monter.
+                <a href="#hashtag">#vosges</a> <a href="#hashtag">#rando</a> <a href="#hashtag">#alsace</a>
+              </p>
+              <button onClick="{{ toggleC1 }}" class="btn btn-ghost" style="align-self:flex-start;font-size:13px">Voir les 23 commentaires</button>
+
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;gap:10px">
+                  <span style="width:32px;height:32px;flex:none;background:var(--color-neutral-600);color:var(--color-bg);font:800 11px/32px var(--font-heading);text-align:center">TM</span>
+                  <div style="font:400 13px/1.5 var(--font-body)"><span style="font-weight:600">tom.mercier</span> Le passage sous la brume, c'est exactement ça. <span style="color:var(--color-neutral-600);font-size:11px">il y a 1 h</span></div>
+                </div>
+                <div style="display:flex;gap:10px">
+                  <span style="width:32px;height:32px;flex:none;background:var(--color-neutral-400);color:var(--color-text);font:800 11px/32px var(--font-heading);text-align:center">SB</span>
+                  <div style="font:400 13px/1.5 var(--font-body)"><span style="font-weight:600">sarah.b</span> Tu partais de quel parking ? <span style="color:var(--color-neutral-600);font-size:11px">il y a 34 min</span></div>
+                </div>
+                <sc-if value="{{ c1Open }}">
+                <div style="display:flex;flex-direction:column;gap:10px;padding-top:2px">
+                  <div style="display:flex;gap:10px;margin-left:44px">
+                    <span style="width:32px;height:32px;flex:none;background:var(--color-neutral-800);color:var(--color-bg);font:800 11px/32px var(--font-heading);text-align:center">LW</span>
+                    <div style="font:400 13px/1.5 var(--font-body)"><span style="font-weight:600">lea.wagner</span> <span style="color:var(--color-accent-700);font-weight:600">@sarah.b</span> Celui du col de la Schlucht. <span style="color:var(--color-neutral-600);font-size:11px">il y a 20 min</span></div>
+                  </div>
+                  <div style="display:flex;gap:10px">
+                    <span style="width:32px;height:32px;flex:none;background:var(--color-neutral-500);color:var(--color-bg);font:800 11px/32px var(--font-heading);text-align:center">NK</span>
+                    <div style="font:400 13px/1.5 var(--font-body)"><span style="font-weight:600">nadia.k</span> On refait la même en octobre ? <span style="color:var(--color-neutral-600);font-size:11px">il y a 12 min</span></div>
+                  </div>
+                </div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;gap:8px;border-top:1px solid var(--color-divider);padding-top:12px">
+                <input class="input" placeholder="Ajouter un commentaire…" value="{{ c1Draft }}" onChange="{{ onC1 }}">
+                <button onClick="{{ sendC1 }}" class="btn btn-secondary">Publier</button>
+              </div>
+            </div>
+          </article>
+
+          <!-- ── publication 2 : repartage ── -->
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 0 8px;font:600 12px var(--font-body);color:var(--color-neutral-700)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V6h13l-3-3M20 15v3H7l3 3"/></svg>
+              <span>tom.mercier a repartagé</span>
+            </div>
+            <article style="border:1px solid var(--color-divider);background:var(--color-surface)">
+              <header style="display:flex;align-items:center;gap:12px;padding:12px">
+                <span style="width:44px;height:44px;flex:none;background:var(--color-neutral-600);color:var(--color-bg);font:800 14px/44px var(--font-heading);text-align:center">TM</span>
+                <div style="display:flex;flex-direction:column">
+                  <span style="font:600 15px var(--font-body)">tom.mercier</span>
+                  <span style="font:400 12px var(--font-body);color:var(--color-neutral-700)">il y a 5 h · Public</span>
+                </div>
+                <button class="btn btn-icon" style="margin-left:auto">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                </button>
+              </header>
+              <p style="margin:0;padding:0 12px 12px;font:400 14px/1.55 var(--font-body)">À garder pour la sortie de septembre.</p>
+
+              <div style="margin:0 12px 12px;border:1px solid var(--color-divider);background:var(--color-bg)">
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 12px">
+                  <span style="width:28px;height:28px;flex:none;background:var(--color-neutral-500);color:var(--color-bg);font:800 10px/28px var(--font-heading);text-align:center">CF</span>
+                  <span style="font:600 13px var(--font-body)">club.foehn</span>
+                  <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">il y a 8 h</span>
+                </div>
+                <div class="grayscale" style="width:100%;aspect-ratio:16/9;background:var(--color-text)">
+                  <image-slot id="u01-p2" shape="rect" placeholder="Photo 16:9 — sortie du club"></image-slot>
+                </div>
+                <p style="margin:0;padding:10px 12px;font:400 13px/1.5 var(--font-body)">Inscriptions ouvertes pour la traversée. <a href="#hashtag">#foehn</a></p>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:4px;padding:6px 8px;border-top:1px solid var(--color-divider)">
+                <button onClick="{{ likeP2 }}" class="btn btn-icon" style="color:{{ p2LikeColor }}">
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="{{ p2LikeFill }}" stroke="currentColor" stroke-width="1.75"><path d="M12 20s-8-4.9-8-10.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8 3.2C20 15.1 12 20 12 20z"/></svg>
+                </button>
+                <button class="btn btn-icon">
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M7 14V4h11l2 7v3h-5l1 5-2 1-4-6z"/></svg>
+                </button>
+                <button class="btn btn-icon">
+                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 4h16v12H9l-5 4z"/></svg>
+                </button>
+                <span style="margin-left:8px;font:600 13px var(--font-body)">{{ p2Likes }} J'aime</span>
+              </div>
+            </article>
+          </div>
+
+          <!-- ── publication 3 : contenu retiré (vue auteur) ── -->
+          <article data-screen-label="U-01 retiré" style="border:1px solid var(--color-divider);background:var(--color-surface)">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--color-accent-100);border-bottom:1px solid var(--color-accent-300)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.75" style="flex:none;margin-top:1px"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v4M12 15.5v.5"/></svg>
+              <div style="font:400 13px/1.5 var(--font-body);color:var(--color-accent-800)">
+                <span style="font-weight:600">Cette publication a été retirée pour non-respect des règles.</span>
+                Elle n'est plus visible par les autres comptes.
+                <a href="#u18" style="color:var(--color-accent-800);text-decoration:underline">En savoir plus</a>
+              </div>
+            </div>
+            <header style="display:flex;align-items:center;gap:12px;padding:12px">
+              <span style="width:44px;height:44px;flex:none;background:var(--color-accent);color:var(--color-bg);font:800 14px/44px var(--font-heading);text-align:center">LC</span>
+              <div style="display:flex;flex-direction:column">
+                <span style="font:600 15px var(--font-body)">luca.c</span>
+                <span style="font:400 12px var(--font-body);color:var(--color-neutral-700)">il y a 2 j · Public</span>
+              </div>
+              <span class="tag tag-neutral" style="margin-left:auto">Retirée</span>
+            </header>
+            <div style="position:relative;width:100%;aspect-ratio:1/1;background:var(--color-neutral-300)">
+              <div class="grayscale" style="position:absolute;inset:0;filter:grayscale(1) blur(18px)">
+                <image-slot id="u01-p3" shape="rect" placeholder="Photo 1:1"></image-slot>
+              </div>
+              <div style="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none">
+                <span style="background:var(--color-text);color:var(--color-bg);font:800 12px var(--font-heading);letter-spacing:.08em;text-transform:uppercase;padding:8px 12px">Contenu masqué</span>
+              </div>
+            </div>
+            <p style="margin:0;padding:12px;font:400 14px/1.55 var(--font-body);color:var(--color-neutral-700)">Les réactions et les commentaires sont désactivés sur une publication retirée.</p>
+          </article>
+
+          <div style="text-align:center;font:600 12px var(--font-body);color:var(--color-neutral-600);padding:8px 0 0">Vous êtes à jour</div>
+        </div>
+
+        <!-- colonne secondaire -->
+        <aside style="display:flex;flex-direction:column;gap:32px">
+          <section>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--color-divider);padding-bottom:6px;margin-bottom:12px">
+              <h6 style="margin:0">Demandes d'amitié</h6>
+              <span class="tag tag-accent">2</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:36px;height:36px;flex:none;background:var(--color-neutral-700);color:var(--color-bg);font:800 11px/36px var(--font-heading);text-align:center">NK</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 13px var(--font-body)">nadia.k</div>
+                  <div style="font:400 11px var(--font-body);color:var(--color-neutral-600)">3 amis en commun</div>
+                </div>
+                <button class="btn btn-primary" style="padding:5px 9px;font-size:12px">Accepter</button>
+                <button class="btn btn-secondary" style="padding:5px 9px;font-size:12px">Refuser</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:36px;height:36px;flex:none;background:var(--color-neutral-400);color:var(--color-text);font:800 11px/36px var(--font-heading);text-align:center">YB</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 13px var(--font-body)">yanis.b</div>
+                  <div style="font:400 11px var(--font-body);color:var(--color-neutral-600)">1 ami en commun</div>
+                </div>
+                <button class="btn btn-primary" style="padding:5px 9px;font-size:12px">Accepter</button>
+                <button class="btn btn-secondary" style="padding:5px 9px;font-size:12px">Refuser</button>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div style="border-bottom:2px solid var(--color-divider);padding-bottom:6px;margin-bottom:12px"><h6 style="margin:0">Suggestions</h6></div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:36px;height:36px;flex:none;background:var(--color-neutral-500);color:var(--color-bg);font:800 11px/36px var(--font-heading);text-align:center">PM</span>
+                <div style="flex:1"><div style="font:600 13px var(--font-body)">paul.mtn</div><div style="font:400 11px var(--font-body);color:var(--color-neutral-600)">Ami de lea.wagner</div></div>
+                <button class="btn btn-ghost" style="font-size:12px">Ajouter</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:36px;height:36px;flex:none;background:var(--color-neutral-600);color:var(--color-bg);font:800 11px/36px var(--font-heading);text-align:center">EH</span>
+                <div style="flex:1"><div style="font:600 13px var(--font-body)">elsa.h</div><div style="font:400 11px var(--font-body);color:var(--color-neutral-600)">Ami de tom.mercier</div></div>
+                <button class="btn btn-ghost" style="font-size:12px">Ajouter</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="width:36px;height:36px;flex:none;background:var(--color-neutral-300);color:var(--color-text);font:800 11px/36px var(--font-heading);text-align:center">RD</span>
+                <div style="flex:1"><div style="font:600 13px var(--font-body)">remi.d</div><div style="font:400 11px var(--font-body);color:var(--color-neutral-600)">Ami de sarah.b</div></div>
+                <button class="btn btn-ghost" style="font-size:12px">Ajouter</button>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--color-divider);padding-bottom:6px;margin-bottom:4px">
+              <h6 style="margin:0">Tendances 24 h</h6>
+              <a href="#u10" style="font:600 11px var(--font-body)">Voir tout</a>
+            </div>
+            <div style="display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                <span style="font:800 13px var(--font-heading);color:var(--color-neutral-500);width:16px">1</span>
+                <span style="flex:1;font:600 14px var(--font-body)">#vosges</span>
+                <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">412 publications</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                <span style="font:800 13px var(--font-heading);color:var(--color-neutral-500);width:16px">2</span>
+                <span style="flex:1;font:600 14px var(--font-body)">#marchédenoel</span>
+                <span style="display:flex;align-items:center;gap:4px;font:400 11px var(--font-body);color:var(--color-accent-700)">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 20V5M5 12l7-7 7 7"/></svg>
+                  268
+                </span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                <span style="font:800 13px var(--font-heading);color:var(--color-neutral-500);width:16px">3</span>
+                <span style="flex:1;font:600 14px var(--font-body)">#rando</span>
+                <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">193 publications</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                <span style="font:800 13px var(--font-heading);color:var(--color-neutral-500);width:16px">4</span>
+                <span style="flex:1;font:600 14px var(--font-body)">#strasbourg</span>
+                <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">150 publications</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 0">
+                <span style="font:800 13px var(--font-heading);color:var(--color-neutral-500);width:16px">5</span>
+                <span style="flex:1;font:600 14px var(--font-body)">#brume</span>
+                <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">88 publications</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+    </sc-if>
+
+    <!-- ══ U-11 Messagerie ══ -->
+    <sc-if value="{{ isMsg }}">
+    <main data-screen-label="U-11" style="display:grid;grid-template-columns:350px 1fr;height:900px;overflow:hidden">
+
+      <div style="border-right:2px solid var(--color-divider);display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:24px 16px 12px">
+          <h3 style="margin:0">Messages</h3>
+          <button class="btn btn-secondary" style="padding:5px 9px;font-size:12px">Nouvelle</button>
+        </div>
+        <div style="padding:0 16px 12px">
+          <input class="input" placeholder="Rechercher une conversation">
+        </div>
+        <div style="overflow-y:auto;border-top:1px solid var(--color-divider)">
+          <sc-for list="{{ convos }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.open }}" style="all:unset;display:flex;gap:12px;width:100%;box-sizing:border-box;padding:14px 16px;border-bottom:1px solid var(--color-divider);background:{{ c.bg }};cursor:pointer">
+              <span style="width:44px;height:44px;flex:none;background:{{ c.avBg }};color:var(--color-bg);font:800 13px/44px var(--font-heading);text-align:center">{{ c.initials }}</span>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <span style="display:flex;align-items:baseline;gap:8px">
+                  <span style="flex:1;font:{{ c.nameFont }} 14px var(--font-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</span>
+                  <span style="font:400 11px var(--font-body);color:var(--color-neutral-600)">{{ c.time }}</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:8px">
+                  <span style="flex:1;min-width:0;font:400 12px var(--font-body);color:var(--color-neutral-700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.preview }}</span>
+                  <sc-if value="{{ c.unread }}" hint-placeholder-val="{{ false }}">
+                    <span style="background:var(--color-accent);color:var(--color-bg);font:800 10px var(--font-heading);padding:2px 6px">{{ c.unread }}</span>
+                  </sc-if>
+                </span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;overflow:hidden;background:var(--color-bg)">
+        <header style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:2px solid var(--color-divider)">
+          <span style="width:40px;height:40px;flex:none;background:{{ activeAvBg }};color:var(--color-bg);font:800 12px/40px var(--font-heading);text-align:center">{{ activeInitials }}</span>
+          <div style="display:flex;flex-direction:column">
+            <span style="font:600 15px var(--font-body)">{{ activeName }}</span>
+            <span style="font:400 12px var(--font-body);color:var(--color-neutral-700)">{{ activeSub }}</span>
+          </div>
+          <button class="btn btn-icon" style="margin-left:auto">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+          </button>
+        </header>
+
+        <div style="flex:1;overflow-y:auto;padding:24px 32px;display:flex;flex-direction:column;gap:14px">
+          <div style="text-align:center;font:600 11px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-600)">Aujourd'hui</div>
+          <sc-for list="{{ messages }}" as="m" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:{{ m.align }}">
+              <sc-if value="{{ m.system }}" hint-placeholder-val="{{ false }}">
+                <div style="font:400 12px var(--font-body);color:var(--color-neutral-700);text-align:center;padding:4px 0">{{ m.text }}</div>
+              </sc-if>
+              <sc-if value="{{ m.shared }}" hint-placeholder-val="{{ false }}">
+                <div style="max-width:60%;border:1px solid var(--color-divider);background:var(--color-surface)">
+                  <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--color-divider)">
+                    <span style="width:22px;height:22px;background:var(--color-neutral-800);color:var(--color-bg);font:800 9px/22px var(--font-heading);text-align:center">LW</span>
+                    <span style="font:600 12px var(--font-body)">lea.wagner</span>
+                    <span style="margin-left:auto;font:400 10px var(--font-body);color:var(--color-neutral-600)">Publication partagée</span>
+                  </div>
+                  <div class="grayscale" style="width:240px;aspect-ratio:1/1;background:var(--color-text)">
+                    <image-slot id="u11-shared" shape="rect" placeholder="Photo partagée 1:1"></image-slot>
+                  </div>
+                  <div style="padding:8px 10px;font:400 12px/1.45 var(--font-body)">Trois jours de crête… <a href="#hashtag">#vosges</a></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ m.normal }}" hint-placeholder-val="{{ true }}">
+                <div style="max-width:60%;display:flex;flex-direction:column;gap:4px">
+                  <sc-if value="{{ m.showName }}" hint-placeholder-val="{{ false }}">
+                    <span style="font:600 11px var(--font-body);color:var(--color-neutral-700)">{{ m.author }}</span>
+                  </sc-if>
+                  <div style="background:{{ m.bg }};color:{{ m.fg }};border:1px solid {{ m.border }};padding:9px 12px;font:400 14px/1.5 var(--font-body)">{{ m.text }}</div>
+                  <span style="font:400 10px var(--font-body);color:var(--color-neutral-600);text-align:{{ m.textAlign }}">{{ m.time }}</span>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border-top:2px solid var(--color-divider);padding:14px 20px;display:flex;gap:10px;align-items:flex-end">
+          <textarea class="input" style="min-height:44px;height:44px;resize:none;padding:11px 12px" placeholder="Écrire un message… (Entrée pour envoyer)" value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onKey }}"></textarea>
+          <button onClick="{{ send }}" class="btn btn-primary" disabled="{{ sendDisabled }}" style="height:44px;padding-inline:18px">
+            Envoyer
+          </button>
+        </div>
+      </div>
+    </main>
+    </sc-if>
+
+  </div>
+
+  <p style="width:1440px;margin:16px 0 0;font:400 12px/1.6 var(--font-body);color:var(--color-neutral-700)">
+    Fondations Modernist appliquées telles quelles : Archivo, angles droits, règles de 2 px entre sections, rouge #ec3013 en accent unique, photographies en noir et blanc. Les emplacements photo acceptent vos propres images par glisser-déposer.
+  </p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1520,&quot;height&quot;:1020}}">
+class Component extends DCLogic {
+  state = {
+    screen: 'home',
+    p1: { likes: 128, liked: false, dis: 4, disliked: false },
+    p2: { likes: 61, liked: false },
+    c1Open: false,
+    c1Draft: '',
+    conv: 'lea',
+    draft: '',
+    threads: {
+      lea: [
+        { author: 'lea.wagner', me: false, text: "Tu montes samedi ? La météo tient jusqu'à dimanche.", time: '09:12' },
+        { author: 'moi', me: true, text: 'Oui, départ 7 h du parking de la Schlucht ?', time: '09:20' },
+        { author: 'lea.wagner', me: false, shared: true, time: '09:21' },
+        { author: 'lea.wagner', me: false, text: 'Parfait. Je prends le réchaud.', time: '09:21' }
+      ],
+      sarah: [
+        { author: 'sarah.b', me: false, text: 'Merci pour le tuyau du parking !', time: 'lun. 17:48' }
+      ],
+      groupe: [
+        { system: true, text: 'Léa a ajouté Tom au groupe' },
+        { author: 'lea.wagner', me: false, text: "On se retrouve où pour la traversée ?", time: '18:02', showName: true },
+        { author: 'tom.mercier', me: false, text: 'Gare de Colmar, 7 h 15.', time: '18:04', showName: true },
+        { author: 'moi', me: true, text: 'Noté. Je réserve le refuge pour six.', time: '18:09' }
+      ],
+      club: [
+        { author: 'club.foehn', me: false, text: 'Les inscriptions à la traversée sont ouvertes.', time: '11:40' },
+        { author: 'moi', me: true, text: 'Je prends deux places.', time: '12:02' }
+      ]
+    }
+  };
+
+  meta = {
+    lea: { name: 'lea.wagner', initials: 'LW', avBg: 'var(--color-neutral-800)', sub: 'En ligne', preview: 'Parfait. Je prends le réchaud.', time: '09:21', unread: 0 },
+    groupe: { name: 'Traversée des crêtes', initials: 'TC', avBg: 'var(--color-accent)', sub: '12 membres', preview: 'Tom : Gare de Colmar, 7 h 15.', time: '18:04', unread: 2 },
+    club: { name: 'club.foehn', initials: 'CF', avBg: 'var(--color-neutral-600)', sub: 'Ami depuis mars', preview: 'Je prends deux places.', time: 'hier', unread: 1 },
+    sarah: { name: 'sarah.b', initials: 'SB', avBg: 'var(--color-neutral-400)', sub: 'Ami', preview: 'Merci pour le tuyau du parking !', time: 'lun.', unread: 0 }
+  };
+
+  renderVals() {
+    const s = this.state, ink = 'var(--color-text)', red = 'var(--color-accent)';
+    const active = this.meta[s.conv];
+    const thread = s.threads[s.conv] || [];
+
+    const convos = Object.keys(this.meta).map(id => {
+      const m = this.meta[id], on = id === s.conv;
+      return {
+        ...m, initials: m.initials, unread: m.unread || 0,
+        bg: on ? 'color-mix(in srgb, var(--color-text) 8%, transparent)' : 'transparent',
+        nameFont: m.unread ? '700' : '600',
+        open: () => this.setState({ conv: id, draft: '' })
+      };
+    });
+
+    const messages = thread.map(m => ({
+      text: m.text, time: m.time, author: m.author,
+      system: !!m.system, shared: !!m.shared, normal: !m.system && !m.shared, showName: !!m.showName,
+      align: m.system ? 'center' : (m.me ? 'flex-end' : 'flex-start'),
+      textAlign: m.me ? 'right' : 'left',
+      bg: m.me ? red : 'var(--color-surface)',
+      fg: m.me ? 'var(--color-bg)' : ink,
+      border: m.me ? red : 'var(--color-divider)'
+    }));
+
+    const push = () => {
+      const t = s.draft.trim(); if (!t) return;
+      this.setState(st => ({
+        draft: '',
+        threads: { ...st.threads, [st.conv]: [...st.threads[st.conv], { author: 'moi', me: true, text: t, time: 'à l\u2019instant' }] }
+      }));
+    };
+
+    return {
+      isHome: s.screen === 'home', isMsg: s.screen === 'msg',
+      goHome: () => this.setState({ screen: 'home' }),
+      goMsg: () => this.setState({ screen: 'msg' }),
+      cHome: s.screen === 'home' ? red : 'var(--color-neutral-700)',
+      bgHome: s.screen === 'home' ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+      cMsg: s.screen === 'msg' ? red : 'var(--color-neutral-700)',
+      bgMsg: s.screen === 'msg' ? 'color-mix(in srgb, var(--color-accent) 10%, transparent)' : 'transparent',
+
+      p1Likes: s.p1.likes, p1Dis: s.p1.dis,
+      p1LikeColor: s.p1.liked ? red : ink,
+      p1LikeFill: s.p1.liked ? red : 'none',
+      p1DisColor: s.p1.disliked ? red : ink,
+      likeP1: () => this.setState(st => ({ p1: { ...st.p1, liked: !st.p1.liked, likes: st.p1.likes + (st.p1.liked ? -1 : 1), disliked: false, dis: st.p1.dis - (st.p1.disliked ? 1 : 0) } })),
+      dislikeP1: () => this.setState(st => ({ p1: { ...st.p1, disliked: !st.p1.disliked, dis: st.p1.dis + (st.p1.disliked ? -1 : 1), liked: false, likes: st.p1.likes - (st.p1.liked ? 1 : 0) } })),
+
+      p2Likes: s.p2.likes,
+      p2LikeColor: s.p2.liked ? red : ink,
+      p2LikeFill: s.p2.liked ? red : 'none',
+      likeP2: () => this.setState(st => ({ p2: { liked: !st.p2.liked, likes: st.p2.likes + (st.p2.liked ? -1 : 1) } })),
+
+      c1Open: s.c1Open,
+      toggleC1: () => this.setState(st => ({ c1Open: !st.c1Open })),
+      c1Draft: s.c1Draft,
+      onC1: e => this.setState({ c1Draft: e.target.value }),
+      sendC1: () => this.setState({ c1Draft: '', c1Open: true }),
+
+      convos, messages,
+      activeName: active.name, activeSub: active.sub,
+      activeInitials: active.initials, activeAvBg: active.avBg,
+      draft: s.draft,
+      onDraft: e => this.setState({ draft: e.target.value }),
+      onKey: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); push(); } },
+      send: push,
+      sendDisabled: !s.draft.trim()
+    };
+  }
+}
+
+</script>
+</body>
+</html>
