@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accueil - Hesstagram</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 420px;
+    margin: 60px auto;
+    padding: 0 16px;
+    text-align: center;
+    color: #222;
+  }
+  button {
+    margin-top: 20px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>Bienvenue, <span id="nom-utilisateur"></span></h1>
+  <p>Page vide pour l'instant, le contenu (fil, profil...) viendra dans une prochaine étape.</p>
+  <button id="btn-logout">Se déconnecter</button>
+
+  <script>
+    // Récupère ce qui a été stocké par index.html lors de la connexion.
+    // S'il n'y a rien, personne n'est connecté : retour à la page de login.
+    const token = localStorage.getItem('token');
+    const nom = localStorage.getItem('nom');
+
+    if (!token) {
+      window.location.href = 'index.html';
+    } else {
+      document.getElementById('nom-utilisateur').textContent = nom;
+    }
+
+    // Déconnexion : on efface les infos stockées et on revient au login.
+    // (le token JWT lui-même reste valable côté serveur jusqu'à
+    // expiration, on ne fait qu'oublier qu'on l'a côté navigateur)
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('nom');
+      window.location.href = 'index.html';
+    });
+  </script>
+</body>
+</html>
