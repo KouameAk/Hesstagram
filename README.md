@@ -406,27 +406,24 @@ gh pr create --fill
 
 Promotion BUT RT 3ᵉ année, groupe RT31 — parcours Cyber FA et ROM FA  
 IUT Colmar, Université de Haute-Alsace — Automne 2026  
-Encadrant : Jonathan Weber ([jonathan.weber@uha.fr](mailto:jonathan.weber@uha.fr))
+Encadrant : Jonathan Weber
 
 | Membre | Rôle | Domaine principal |
 |---|---|---|
 | **Luca Fitzentz** | Product Owner · Co-responsable sécurité | Policy de visibilité, autorisation, rapport |
 | **Akaza Kouame** | Scrum Master · Co-responsable BDD | CI/CD, amitié, notifications, ceremonies |
-| **Noa Spiegel** | Responsable BDD | Schéma, migrations, repositories, performance |
+| **Noah Spiegel** | Responsable BDD | Schéma, migrations, repositories, performance |
 | **Cameron Florence** | Backend | Architecture, médias, WebSocket, Docker |
 | **Joachim Gutter** | Frontend | Design system, fil, profil, écrans d'interaction |
 | **Valentin Launay** | Frontend interactif | Éditeur d'image, messagerie, recherche, stories |
 | **Guillaume Jacquot** | Responsable sécurité | Auth, upload, tests de sécurité, audit |
 | **Lucas Herchuel** | Responsable documentation | Docusaurus, tests unitaires, back-office admin |
-
 ---
-
 ## 📄 Licence
 
 Distribué sous licence [MIT](./LICENSE).
 
 Ce projet est réalisé à des fins exclusivement pédagogiques dans le cadre du BUT Réseaux & Télécommunications de l'IUT Colmar. Il n'est pas affilié à Instagram, Meta, ni à aucune entité commerciale. Les noms, logos et marques mentionnés restent la propriété de leurs titulaires respectifs.
-
 ---
 
 <div align="center">
