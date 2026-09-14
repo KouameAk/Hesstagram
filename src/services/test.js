@@ -6,7 +6,9 @@ const {
     acceptFriendRequest,
     removeOrDeclineFriend,
     getAcceptedFriends,
-    getPendingRequests
+    getPendingRequests,
+    getSentRequests,
+    getFullFriendList
 } = require('./ami.js');
 
 const DB_FILE = 'test_database.db';
@@ -54,7 +56,7 @@ const teardownDb = () => new Promise((resolve) => db.close(resolve));
 async function runAllTests() {
     console.log("--- Exécution des tests unitaires en JS ---");
 
-    // Test 1
+    // Test 1 : Envoi de demande
     await setupDb();
     await new Promise((resolve) => {
         sendFriendRequest(1, 1, (err) => {
@@ -71,7 +73,7 @@ async function runAllTests() {
     });
     await teardownDb();
 
-    // Test 2
+    // Test 2 : Acceptation
     await setupDb();
     await new Promise((resolve) => {
         sendFriendRequest(1, 2, () => {
@@ -85,7 +87,7 @@ async function runAllTests() {
     });
     await teardownDb();
 
-    // Test 3
+    // Test 3 : Refus ou suppression
     await setupDb();
     await new Promise((resolve) => {
         sendFriendRequest(1, 2, () => {
@@ -99,7 +101,7 @@ async function runAllTests() {
     });
     await teardownDb();
 
-    // Test 4
+    // Test 4 : Récupérer les amis confirmés
     await setupDb();
     await new Promise((resolve) => {
         sendFriendRequest(1, 2, () => {
@@ -108,7 +110,7 @@ async function runAllTests() {
                     assert.strictEqual(err, null);
                     assert.strictEqual(friends.length, 1);
                     assert.strictEqual(friends[0].nom, 'Bob');
-                    console.log("✔ Test 4 réussi : Récupération des amis");
+                    console.log("✔ Test 4 réussi : Récupération des amis confirmés");
                     resolve();
                 });
             });
@@ -116,7 +118,7 @@ async function runAllTests() {
     });
     await teardownDb();
 
-    // Test 5
+    // Test 5 : Demandes reçues en attente
     await setupDb();
     await new Promise((resolve) => {
         sendFriendRequest(1, 2, () => {
@@ -124,15 +126,56 @@ async function runAllTests() {
                 assert.strictEqual(err, null);
                 assert.strictEqual(requests.length, 1);
                 assert.strictEqual(requests[0].nom, 'Alice');
-                console.log("✔ Test 5 réussi : Demandes en attente");
+                console.log("✔ Test 5 réussi : Demandes reçues en attente");
                 resolve();
             });
         });
     });
     await teardownDb();
 
+    // Test 6 : Demandes envoyées en attente
+    await setupDb();
+    await new Promise((resolve) => {
+        sendFriendRequest(1, 2, () => {
+            getSentRequests(1, (err, requests) => {
+                assert.strictEqual(err, null);
+                assert.strictEqual(requests.length, 1);
+                assert.strictEqual(requests[0].nom, 'Bob');
+                console.log("✔ Test 6 réussi : Demandes envoyées en attente");
+                resolve();
+            });
+        });
+    });
+    await teardownDb();
+
+    // Test 7 : Liste complète avec différenciation des statuts
+    await setupDb();
+    await new Promise((resolve) => {
+        // Alice envoie à Bob (en attente)
+        sendFriendRequest(1, 2, () => {
+            // Charlie envoie à Alice puis Alice accepte (ami)
+            sendFriendRequest(3, 1, () => {
+                acceptFriendRequest(1, 3, () => {
+                    getFullFriendList(1, (err, list) => {
+                        assert.strictEqual(err, null);
+                        assert.strictEqual(list.length, 2);
+
+                        const bob = list.find(u => u.id === 2);
+                        const charlie = list.find(u => u.id === 3);
+
+                        assert.strictEqual(bob.type_relation, 'demande_envoyee');
+                        assert.strictEqual(charlie.type_relation, 'ami');
+
+                        console.log("✔ Test 7 réussi : Liste globale avec tous les statuts");
+                        resolve();
+                    });
+                });
+            });
+        });
+    });
+    await teardownDb();
+
     console.log("--- Tous les tests sont passés avec succès ! ---");
-    console.log(`Le fichier "${DB_FILE}" contient le dernier état de la base.`);
 }
 
 runAllTests().catch((err) => {
