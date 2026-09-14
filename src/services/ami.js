@@ -48,6 +48,7 @@ function removeOrDeclineFriend(id1, id2, callback) {
     });
 }
 
+// Récupérer uniquement les amis confirmés
 function getAcceptedFriends(userId, callback) {
     const query = `
         SELECT u.id, u.nom, u.role 
@@ -64,6 +65,7 @@ function getAcceptedFriends(userId, callback) {
     });
 }
 
+// Récupérer les demandes reçues en attente
 function getPendingRequests(userId, callback) {
     const query = `
         SELECT u.id, u.nom, u.role 
@@ -78,11 +80,52 @@ function getPendingRequests(userId, callback) {
     });
 }
 
+// Récupérer les demandes envoyées en attente
+function getSentRequests(userId, callback) {
+    const query = `
+        SELECT u.id, u.nom, u.role 
+        FROM utilisateur u
+        JOIN ami a ON u.id = a.id_utilisateur2
+        WHERE a.id_utilisateur1 = ? AND a.statut = 'en_attente'
+    `;
+
+    db.all(query, [userId], (err, rows) => {
+        if (err) return callback(err);
+        callback(null, rows);
+    });
+}
+
+// Récupérer la liste complète avec différenciation des statuts (ami, demande_envoyee, demande_recue)
+function getFullFriendList(userId, callback) {
+    const query = `
+        SELECT 
+            u.id, 
+            u.nom, 
+            u.role,
+            CASE 
+                WHEN a.statut = 'accepte' THEN 'ami'
+                WHEN a.id_utilisateur1 = ? THEN 'demande_envoyee'
+                ELSE 'demande_recue'
+            END AS type_relation
+        FROM utilisateur u
+        JOIN ami a ON (u.id = a.id_utilisateur2 OR u.id = a.id_utilisateur1)
+        WHERE (a.id_utilisateur1 = ? OR a.id_utilisateur2 = ?) 
+          AND u.id != ?
+    `;
+
+    db.all(query, [userId, userId, userId, userId], (err, rows) => {
+        if (err) return callback(err);
+        callback(null, rows);
+    });
+}
+
 module.exports = {
     setDb,
     sendFriendRequest,
     acceptFriendRequest,
     removeOrDeclineFriend,
     getAcceptedFriends,
-    getPendingRequests
+    getPendingRequests,
+    getSentRequests,
+    getFullFriendList
 };
