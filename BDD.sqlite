@@ -3,7 +3,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE `utilisateur` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `nom` VARCHAR(255),
-    `mdp` VARCHAR(255),
+    `mdp` TEXT NOT NULL,
     `date` DATETIME,
     `role` VARCHAR(255)
 );
@@ -11,7 +11,6 @@ CREATE TABLE `utilisateur` (
 CREATE TABLE `ami` (
     `id_utilisateur1` INTEGER,
     `id_utilisateur2` INTEGER,
-    `statut` VARCHAR(50) DEFAULT 'en_attente', -- 'en_attente' ou 'accepte'
     PRIMARY KEY (`id_utilisateur1`, `id_utilisateur2`),
     FOREIGN KEY (`id_utilisateur1`) REFERENCES `utilisateur` (`id`),
     FOREIGN KEY (`id_utilisateur2`) REFERENCES `utilisateur` (`id`)
