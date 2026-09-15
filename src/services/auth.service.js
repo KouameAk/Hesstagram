@@ -28,7 +28,7 @@ export class ErreurAuth extends Error {
 /**
  * Inscrit un nouvel utilisateur.
  *   1. Vérifie que nom et mdp sont fournis
- *   2. Vérifie que le mot de passe fait au moins 6 caractères
+ *   2. Vérifie que le mot de passe fait au moins 12 caractères
  *   3. Vérifie que ce nom d'utilisateur n'est pas déjà pris
  *   4. Hash le mot de passe (jamais stocké en clair en base)
  *   5. Insère le nouvel utilisateur (role "user" par défaut)
@@ -37,8 +37,8 @@ export async function inscrire(db, { nom, mdp }) {
   if (!nom || !mdp) {
     throw new ErreurAuth("Nom d'utilisateur et mot de passe requis.", 400);
   }
-  if (mdp.length < 6) {
-    throw new ErreurAuth('Le mot de passe doit contenir au moins 6 caractères.', 400);
+  if (mdp.length < 12) {
+    throw new ErreurAuth('Le mot de passe doit contenir au moins 12 caractères.', 400);
   }
 
   const existant = utilisateurRepository.trouverParNom(db, nom);
