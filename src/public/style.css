@@ -1,0 +1,311 @@
+/**
+ * style.css
+ * ------------------------------------------------------------
+ * Page d'authentification Hesstagram.
+ * Direction artistique reprise des maquettes : rose vif sur fond
+ * blanc, pilules très arrondies, typo géométrique.
+ * ------------------------------------------------------------
+ */
+
+:root {
+  /* Couleurs */
+  --rose:        #ED5A85;
+  --rose-fonce:  #D3446E;
+  --rose-pale:   #FDECF1;
+  --vert:        #14875C;
+  --vert-pale:   #E7F6EF;
+  --noir:        #000000;
+  --gris-texte:  #6E6E76;
+  --gris-champ:  #F4F4F6;
+  --bordure:     #E6E6EA;
+  --blanc:       #FFFFFF;
+
+  /* Couleurs du fond, reprises du logo (rose / violet / orange) */
+  --lueur-rose:   #ED5A85;
+  --lueur-violet: #8B5CF6;
+  --lueur-orange: #F6A23B;
+
+  /* Rayons */
+  --rayon-champ:   16px;
+  --rayon-pilule: 999px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  position: relative;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--blanc);
+  color: var(--noir);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 32px 20px;
+  overflow-x: hidden;
+}
+
+/* ------------------------------------------------------------------
+   Fond : trois lueurs douces aux couleurs du logo (rose, violet,
+   orange), floutées, pour casser le blanc uni sans distraire du
+   formulaire. Fixe par rapport au viewport, pas au contenu.
+------------------------------------------------------------------ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(560px circle at 6% 8%,   var(--lueur-rose)   38%, transparent 68%),
+    radial-gradient(520px circle at 96% 18%, var(--lueur-violet) 32%, transparent 68%),
+    radial-gradient(620px circle at 50% 108%, var(--lueur-orange) 32%, transparent 65%);
+  opacity: 0.55;
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------
+   Conteneur : largeur d'un écran de téléphone, comme les maquettes
+------------------------------------------------------------------ */
+.ecran {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ------------------------------------------------------------------
+   En-tête de marque
+------------------------------------------------------------------ */
+.marque {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.marque__logo {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 16px;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.16));
+}
+
+.marque__nom {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  margin: 0 0 6px;
+}
+
+.marque__phrase {
+  font-size: 0.93rem;
+  color: var(--gris-texte);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------
+   Onglets : chips en pilule, curseur noir qui coulisse
+------------------------------------------------------------------ */
+.onglets {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: var(--gris-champ);
+  border-radius: var(--rayon-pilule);
+  padding: 5px;
+  margin-bottom: 24px;
+}
+
+.onglets__curseur {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: calc(50% - 5px);
+  height: calc(100% - 10px);
+  background: var(--noir);
+  border-radius: var(--rayon-pilule);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.onglet {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.93rem;
+  color: var(--gris-texte);
+  padding: 11px 0;
+  border-radius: var(--rayon-pilule);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.onglet.est-actif {
+  color: var(--blanc);
+}
+
+/* ------------------------------------------------------------------
+   Champs de formulaire
+------------------------------------------------------------------ */
+.champ {
+  margin-bottom: 18px;
+}
+
+.champ label {
+  display: block;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--gris-texte);
+  margin-bottom: 7px;
+  padding-left: 4px;
+}
+
+.champ input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--noir);
+  background: var(--gris-champ);
+  border: 1.5px solid transparent;
+  border-radius: var(--rayon-champ);
+  padding: 15px 16px;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.champ input::placeholder {
+  color: #A9A9B2;
+}
+
+.champ input:focus {
+  outline: none;
+  background: var(--blanc);
+  border-color: var(--noir);
+}
+
+.champ input:focus-visible {
+  outline: 2px solid var(--rose);
+  outline-offset: 2px;
+}
+
+/* Champ mot de passe + bouton oeil */
+.champ__mdp {
+  position: relative;
+}
+
+.champ__mdp input {
+  padding-right: 52px;
+}
+
+.oeil {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: none;
+  border-radius: 50%;
+  color: #9A9AA3;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s;
+}
+
+.oeil svg {
+  width: 20px;
+  height: 20px;
+}
+
+.oeil:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.oeil.est-actif {
+  color: var(--rose);
+}
+
+.oeil:focus-visible {
+  outline: 2px solid var(--rose);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------
+   Bouton principal
+------------------------------------------------------------------ */
+.bouton {
+  width: 100%;
+  font: inherit;
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--blanc);
+  background: var(--rose);
+  border: 0;
+  border-radius: var(--rayon-pilule);
+  padding: 16px;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+}
+
+.bouton:hover {
+  background: var(--rose-fonce);
+}
+
+.bouton:active {
+  transform: scale(0.985);
+}
+
+.bouton:focus-visible {
+  outline: 2px solid var(--noir);
+  outline-offset: 3px;
+}
+
+.bouton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.bouton.est-occupe::after {
+  content: '…';
+}
+
+/* ------------------------------------------------------------------
+   Messages (erreur / succès)
+------------------------------------------------------------------ */
+.message {
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.45;
+  border-radius: var(--rayon-champ);
+  padding: 13px 16px;
+  margin: 0 0 20px;
+}
+
+.message.est-erreur {
+  background: var(--rose-pale);
+  color: var(--rose-fonce);
+}
+
+.message.est-succes {
+  background: var(--vert-pale);
+  color: var(--vert);
+}
+
+/* ------------------------------------------------------------------
+   Accessibilité : mouvement réduit
+------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
