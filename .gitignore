@@ -1,5 +1,24 @@
+# Dépendances Node.js
 node_modules/
-dist/
+
+# Fichiers d'environnement (secrets, configuration locale)
 .env
-*.log
+
+# Fichiers de base de données (données réelles)
 data/
+*.sqlite3
+*.db
+# (Note : BDD.sqlite semble être un fichier de schéma SQL dans ce projet, il peut être gardé si c'est le cas)
+
+# Fichiers uploadés par les utilisateurs (vidéos, photos)
+src/public/uploads/
+
+# Fichiers de logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Dossiers systèmes (Mac/Windows)
+.DS_Store
+Thumbs.db

@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from './src/bdd/connexion.js';
 import { creerRoutesAuth } from './src/routes/auth.routes.js';
+import { creerRoutesPublication } from './src/routes/publication.routes.js';
 import { creerRoutesUtilisateurs } from './src/routes/utilisateurs.routes.js';
 import { creerRoutesModeration } from './src/routes/moderation.routes.js';
 import { creerRoutesMessagerie } from './src/routes/messagerie.routes.js';
@@ -32,6 +33,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'src/public')));
 
 app.use('/api/auth', creerRoutesAuth(db));
+app.use('/api/publications', creerRoutesPublication(db));
 app.use('/api', creerRoutesUtilisateurs(db));
 app.use('/api', creerRoutesModeration(db));
 app.use('/api', creerRoutesMessagerie(db));
