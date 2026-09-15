@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Administration — rôles</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+    #champ-token { width: 100%; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h1>Gestion des rôles</h1>
+
+  <label for="champ-token">Token admin (obtenu via /api/auth/login) :</label>
+  <input id="champ-token" type="text" placeholder="Colle ton token ici" />
+
+  <p id="message-non-connecte" hidden>Tu dois être connecté (colle ton token ci-dessus) pour voir cette page.</p>
+
+  <div id="contenu-page" hidden>
+    <p><a href="/moderation.html">Utilisateurs signalés →</a></p>
+    <table>
+      <thead>
+        <tr><th>Utilisateur</th><th>Rôle</th></tr>
+      </thead>
+      <tbody id="corps-tableau"></tbody>
+    </table>
+  </div>
+
+  <script src="token.js"></script>
+  <script>
+    const ROLES = ['user', 'modo', 'admin'];
+
+    async function chargerUtilisateurs() {
+      const reponse = await fetch('/api/utilisateurs', { headers: enTeteAvecToken() });
+      if (!reponse.ok) {
+        document.getElementById('corps-tableau').innerHTML =
+          `<tr><td colspan="2">Erreur (${reponse.status}) : vérifie ton token admin ci-dessus.</td></tr>`;
+        return;
+      }
+      const utilisateurs = await reponse.json();
+
+      const corps = document.getElementById('corps-tableau');
+      corps.innerHTML = '';
+
+      for (const utilisateur of utilisateurs) {
+        const ligne = document.createElement('tr');
+
+        const colonneNom = document.createElement('td');
+        colonneNom.textContent = utilisateur.nom;
+
+        const colonneRole = document.createElement('td');
+        const menu = document.createElement('select');
+        for (const role of ROLES) {
+          const option = document.createElement('option');
+          option.value = role;
+          option.textContent = role;
+          if (role === utilisateur.role) option.selected = true;
+          menu.appendChild(option);
+        }
+        menu.addEventListener('change', () => changerRole(utilisateur.id, menu.value));
+
+        colonneRole.appendChild(menu);
+        ligne.appendChild(colonneNom);
+        ligne.appendChild(colonneRole);
+        corps.appendChild(ligne);
+      }
+    }
+
+    async function changerRole(id, role) {
+      await fetch(`/api/utilisateurs/${id}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...enTeteAvecToken() },
+        body: JSON.stringify({ role }),
+      });
+    }
+
+    initialiserChampToken();
+    if (bloquerSiPasConnecte('contenu-page')) {
+      chargerUtilisateurs();
+    }
+  </script>
+</body>
+</html>

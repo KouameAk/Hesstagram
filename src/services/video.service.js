@@ -1,0 +1,42 @@
+import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// Définir le chemin vers le binaire ffmpeg (fonctionne sur tous les OS)
+ffmpeg.setFfmpegPath(ffmpegStatic);
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const finalDir = path.join(__dirname, '../public/uploads/videos');
+
+// S'assurer que le dossier final existe
+if (!fs.existsSync(finalDir)) {
+  fs.mkdirSync(finalDir, { recursive: true });
+}
+
+export function convertirVideoEnMp4(cheminSource) {
+  return new Promise((resolve, reject) => {
+    const nomFichierFinal = `${Date.now()}-converti.mp4`;
+    const cheminFinal = path.join(finalDir, nomFichierFinal);
+
+    ffmpeg(cheminSource)
+      .output(cheminFinal)
+      .videoCodec('libx264') // Codec standard H.264
+      .audioCodec('aac')     // Codec audio standard
+      .format('mp4')
+      .on('end', () => {
+        // Supprimer le fichier temporaire original
+        fs.unlink(cheminSource, (err) => {
+          if (err) console.error("Erreur lors de la suppression du fichier temporaire:", err);
+        });
+        resolve(nomFichierFinal);
+      })
+      .on('error', (err) => {
+        // En cas d'erreur, essayer de nettoyer
+        fs.unlink(cheminSource, () => {});
+        reject(new Error(`Erreur lors de la conversion de la vidéo : ${err.message}`));
+      })
+      .run();
+  });
+}

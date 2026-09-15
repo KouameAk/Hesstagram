@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publier - Hesstagram</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 500px;
+    margin: 40px auto;
+    padding: 0 16px;
+    color: #222;
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid #ddd;
+    margin-bottom: 20px;
+  }
+  .tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #666;
+  }
+  .tab.active {
+    color: #000;
+    border-bottom: 2px solid #000;
+    margin-bottom: -2px;
+  }
+  .tab-content {
+    display: none;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-size: 0.9rem;
+    font-weight: bold;
+  }
+  input, textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 6px;
+    box-sizing: border-box;
+  }
+  button[type="submit"] {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  button[type="submit"]:hover {
+    background: #0056b3;
+  }
+  .message {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 4px;
+    display: none;
+  }
+  .message.success {
+    background: #d4edda;
+    color: #155724;
+    display: block;
+  }
+  .message.error {
+    background: #f8d7da;
+    color: #721c24;
+    display: block;
+  }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    text-decoration: none;
+    color: #007bff;
+  }
+</style>
+</head>
+<body>
+  <a href="accueil.html" class="back-link">&larr; Retour à l'accueil</a>
+  
+  <h1>Nouvelle publication</h1>
+
+  <div class="tabs">
+    <button class="tab active" data-target="tab-video">Vidéo</button>
+    <button class="tab" data-target="tab-photo">Photo</button>
+  </div>
+
+  <div id="tab-video" class="tab-content active">
+    <form id="form-video" enctype="multipart/form-data">
+      <!-- On passe l'ID utilisateur caché (en vrai on devrait l'extraire du JWT côté serveur) -->
+      <input type="hidden" name="idUtilisateur" id="idUtilisateurVideo" value="1">
+      
+      <label>Fichier vidéo
+        <input type="file" name="video" accept="video/*" required>
+      </label>
+      
+      <label>Description
+        <textarea name="description" rows="4" placeholder="Écrivez une description..."></textarea>
+      </label>
+
+      <button type="submit">Publier la vidéo</button>
+    </form>
+    <div id="message-video" class="message"></div>
+  </div>
+
+  <div id="tab-photo" class="tab-content">
+    <p><em>Le téléchargement de photos n'est pas encore disponible.</em></p>
+    <form id="form-photo" style="opacity: 0.5; pointer-events: none;">
+      <label>Fichier image
+        <input type="file" name="photo" accept="image/*" disabled>
+      </label>
+      
+      <label>Description
+        <textarea name="description" rows="4" disabled></textarea>
+      </label>
+
+      <button type="button" disabled>Publier la photo</button>
+    </form>
+  </div>
+
+  <script>
+    // Récupérer le pseudo (ou l'ID) si on l'a (pour le moment on met 1 par défaut 
+    // car on n'a pas l'ID de l'utilisateur dans le local storage, juste son token et nom)
+    // Idéalement, l'API devrait extraire l'ID du JWT, mais pour tester avec la route actuelle :
+    document.getElementById('idUtilisateurVideo').value = 1; // ID statique pour le test
+
+    // Gestion des onglets
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Enlever la classe active partout
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        // Ajouter la classe active sur l'onglet cliqué
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.target).classList.add('active');
+      });
+    });
+
+    // Envoi du formulaire vidéo
+    const formVideo = document.getElementById('form-video');
+    const msgVideo = document.getElementById('message-video');
+
+    formVideo.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      msgVideo.className = 'message';
+      msgVideo.textContent = 'Envoi et conversion en cours... Veuillez patienter.';
+      msgVideo.style.display = 'block';
+
+      const formData = new FormData(formVideo);
+
+      try {
+        const response = await fetch('/api/publications/video', {
+          method: 'POST',
+          body: formData // multer a besoin de formData, pas de JSON
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          msgVideo.className = 'message success';
+          msgVideo.textContent = 'Vidéo publiée avec succès !';
+          formVideo.reset();
+        } else {
+          msgVideo.className = 'message error';
+          msgVideo.textContent = data.message || 'Une erreur est survenue.';
+        }
+      } catch (err) {
+        msgVideo.className = 'message error';
+        msgVideo.textContent = 'Erreur réseau : ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

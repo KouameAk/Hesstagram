@@ -12,61 +12,53 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
-import * as utilisateurRepository from '../src/repositories/utilisateur.repository.js';
-import { inscrire, connecter, ErreurAuth } from '../src/services/auth.service.js';
-import { ouvrirBase } from '../src/bdd/connexion.js';
+import * as utilisateurRepository from './src/repositories/utilisateur.repository.js';
+import { inscrire, connecter, ErreurAuth } from './src/services/auth.service.js';
+import { ouvrirBase } from './src/bdd/connexion.js';
 
 describe('auth.service.js - logique métier', () => {
+  let db;
+  beforeEach(() => {
+    db = ouvrirBase(':memory:');
+  });
+
   it('inscrire() refuse si nom ou mdp manquant', async () => {
-    await assert.rejects(() => inscrire(null, { nom: '', mdp: '' }), ErreurAuth);
+    await assert.rejects(() => inscrire(db, { nom: '', mdp: '' }), ErreurAuth);
   });
 
   it('inscrire() refuse un mot de passe trop court', async () => {
-    await assert.rejects(() => inscrire(null, { nom: 'valou', mdp: '123' }), ErreurAuth);
+    await assert.rejects(() => inscrire(db, { nom: 'valou', mdp: '123' }), ErreurAuth);
   });
 
-  it('inscrire() refuse un nom déjà pris', async (t) => {
-    t.mock.method(utilisateurRepository, 'trouverParNom', () => ({ id: 1, nom: 'valou' }));
-
-    await assert.rejects(() => inscrire(null, { nom: 'valou', mdp: '123456' }), ErreurAuth);
+  it('inscrire() refuse un nom déjà pris', async () => {
+    await inscrire(db, { nom: 'valou', mdp: '123456' });
+    await assert.rejects(() => inscrire(db, { nom: 'valou', mdp: '123456' }), ErreurAuth);
   });
 
-  it('inscrire() crée un utilisateur avec un mot de passe hashé (jamais en clair)', async (t) => {
-    t.mock.method(utilisateurRepository, 'trouverParNom', () => undefined);
-    t.mock.method(utilisateurRepository, 'creerUtilisateur', (db, { mdpHash }) => {
-      assert.notEqual(mdpHash, '123456'); // jamais le mdp en clair
-      assert.ok(mdpHash.startsWith('$2')); // format d'un hash bcrypt
-      return { lastInsertRowid: 1 };
-    });
-
-    const user = await inscrire(null, { nom: 'valou', mdp: '123456' });
+  it('inscrire() crée un utilisateur avec un mot de passe hashé (jamais en clair)', async () => {
+    const user = await inscrire(db, { nom: 'valou', mdp: '123456' });
+    
+    // Vérifier directement en base que le mdp n'est pas en clair
+    const userInDb = utilisateurRepository.trouverParNom(db, 'valou');
+    assert.notEqual(userInDb.mdp, '123456');
+    assert.ok(userInDb.mdp.startsWith('$2')); // bcrypt format
 
     assert.equal(user.nom, 'valou');
     assert.equal(user.role, 'user');
   });
 
-  it('connecter() refuse un utilisateur inconnu', async (t) => {
-    t.mock.method(utilisateurRepository, 'trouverParNom', () => undefined);
-
-    await assert.rejects(() => connecter(null, { nom: 'inconnu', mdp: '123456' }), ErreurAuth);
+  it('connecter() refuse un utilisateur inconnu', async () => {
+    await assert.rejects(() => connecter(db, { nom: 'inconnu', mdp: '123456' }), ErreurAuth);
   });
 
-  it('connecter() refuse un mauvais mot de passe', async (t) => {
-    const mdpHash = await bcrypt.hash('bonmdp', 10);
-    t.mock.method(utilisateurRepository, 'trouverParNom', () => (
-      { id: 1, nom: 'valou', mdp: mdpHash, role: 'user' }
-    ));
-
-    await assert.rejects(() => connecter(null, { nom: 'valou', mdp: 'mauvais' }), ErreurAuth);
+  it('connecter() refuse un mauvais mot de passe', async () => {
+    await inscrire(db, { nom: 'valou', mdp: 'bonmdp' });
+    await assert.rejects(() => connecter(db, { nom: 'valou', mdp: 'mauvais' }), ErreurAuth);
   });
 
-  it('connecter() renvoie un token JWT si le mdp est correct', async (t) => {
-    const mdpHash = await bcrypt.hash('bonmdp', 10);
-    t.mock.method(utilisateurRepository, 'trouverParNom', () => (
-      { id: 1, nom: 'valou', mdp: mdpHash, role: 'user' }
-    ));
-
-    const { token, user } = await connecter(null, { nom: 'valou', mdp: 'bonmdp' });
+  it('connecter() renvoie un token JWT si le mdp est correct', async () => {
+    await inscrire(db, { nom: 'valou', mdp: 'bonmdp' });
+    const { token, user } = await connecter(db, { nom: 'valou', mdp: 'bonmdp' });
 
     assert.ok(token);
     assert.equal(user.nom, 'valou');
