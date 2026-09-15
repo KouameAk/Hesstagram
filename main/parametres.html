@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Paramètres · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  .reglages { max-width: 760px; display: flex; flex-direction: column; gap: 18px; }
+  .section-reglage { padding: 24px; }
+  .section-reglage > h2 { font-size: 19px; display: flex; align-items: center; gap: 10px; }
+  .section-reglage > h2 .icone { color: var(--o-500); }
+  .section-reglage > p.intro { color: var(--muted); margin: 4px 0 18px; font-size: 14.5px; }
+  .grille-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .empreinte { font: 500 15px var(--mono); letter-spacing: .04em; background: var(--bg); padding: 12px 14px; border-radius: 12px; word-break: break-all; }
+  .zone-danger { box-shadow: inset 0 0 0 1.5px #f6c9c4, var(--shadow); }
+  .zone-danger > h2 .icone { color: var(--danger); }
+  @media (max-width: 600px) { .grille-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <h1>Paramètres</h1>
+      <div class="actions" data-actions-entete></div>
+    </header>
+
+    <div class="page reglages">
+      <!-- Compte -->
+      <section class="card section-reglage">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <span id="compte-avatar"></span>
+          <div style="flex:1;min-width:180px">
+            <div style="font:600 21px var(--font)" id="compte-nom"></div>
+            <div class="muted" id="compte-meta"></div>
+          </div>
+          <a class="btn" id="lien-profil">Voir mon profil</a>
+        </div>
+        <div id="lien-staff" hidden style="margin-top:18px"></div>
+      </section>
+
+      <!-- Mot de passe -->
+      <section class="card section-reglage">
+        <h2><span data-ic="cadenas"></span>Mot de passe</h2>
+        <p class="intro">Choisissez un mot de passe de 6 à 12 caractères. Les autres appareils restent connectés.</p>
+        <form id="form-mdp" style="display:flex;flex-direction:column;gap:14px" novalidate>
+          <div class="field">
+            <label for="mdp-actuel">Mot de passe actuel</label>
+            <input class="input" id="mdp-actuel" type="password" autocomplete="current-password" maxlength="12" required>
+          </div>
+          <div class="grille-2">
+            <div class="field">
+              <label for="mdp-nouveau">Nouveau mot de passe <span class="compteur" id="c-nouveau">0/12</span></label>
+              <input class="input" id="mdp-nouveau" type="password" autocomplete="new-password" minlength="6" maxlength="12" required>
+            </div>
+            <div class="field">
+              <label for="mdp-confirm">Confirmation</label>
+              <input class="input" id="mdp-confirm" type="password" autocomplete="new-password" maxlength="12" required>
+            </div>
+          </div>
+          <div class="auth-regles"><ul id="regles-mdp"></ul></div>
+          <div><button class="btn btn-primary" id="btn-mdp" disabled>Mettre à jour le mot de passe</button></div>
+        </form>
+      </section>
+
+      <!-- Messagerie chiffrée -->
+      <section class="card section-reglage">
+        <h2><span data-ic="cle"></span>Messagerie chiffrée</h2>
+        <p class="intro">Vos messages sont chiffrés dans ce navigateur. Comparez cette empreinte de vive voix avec vos contacts pour vérifier que personne ne s’est glissé dans la conversation.</p>
+        <div id="etat-cle"><div class="skeleton" style="height:48px"></div></div>
+      </section>
+
+      <!-- Session -->
+      <section class="card section-reglage">
+        <h2><span data-ic="sortie"></span>Session</h2>
+        <p class="intro">Déconnectez-vous de ce navigateur.</p>
+        <button class="btn" id="btn-deconnexion">Se déconnecter</button>
+      </section>
+
+      <!-- Zone de danger -->
+      <section class="card section-reglage zone-danger">
+        <h2><span data-ic="alerte"></span>Fermer mon compte</h2>
+        <p class="intro">Supprime définitivement votre compte, vos publications, commentaires, j’aime, abonnements et messages. Cette action est irréversible.</p>
+        <button class="btn btn-danger" id="btn-fermer">Fermer mon compte…</button>
+        <p class="muted" id="fermer-admin" hidden style="margin-top:10px;font-size:14px">Un administrateur ne peut pas fermer son propre compte : transmettez d’abord le rôle.</p>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script src="/crypto.js"></script>
+<script>
+function regle(ok, texte) {
+  return `<li class="${ok ? 'ok' : ''}">${icone(ok ? 'coche' : 'horloge')}${texte}</li>`;
+}
+
+function brancherMotDePasse() {
+  const actuel = document.getElementById('mdp-actuel');
+  const nouveau = document.getElementById('mdp-nouveau');
+  const confirm = document.getElementById('mdp-confirm');
+  const bouton = document.getElementById('btn-mdp');
+  const maj = () => {
+    const n = nouveau.value;
+    const longueur = n.length >= 6 && n.length <= 12;
+    const identiques = n && n === confirm.value;
+    const different = n && n !== actuel.value;
+    document.getElementById('c-nouveau').textContent = `${n.length}/12`;
+    document.getElementById('c-nouveau').classList.toggle('plein', n.length === 12);
+    document.getElementById('regles-mdp').innerHTML =
+      regle(longueur, '6 à 12 caractères') + regle(identiques, 'Les deux saisies correspondent') + regle(different, 'Différent du mot de passe actuel');
+    bouton.disabled = !(actuel.value && longueur && identiques && different);
+  };
+  [actuel, nouveau, confirm].forEach(i => { i.oninput = maj; });
+  maj();
+
+  document.getElementById('form-mdp').onsubmit = async e => {
+    e.preventDefault();
+    bouton.disabled = true;
+    try {
+      await api('/api/moi/mdp', { method: 'PUT', body: { ancien: actuel.value, nouveau: nouveau.value } });
+      e.target.reset();
+      toast('Mot de passe mis à jour');
+    } catch (err) {
+      toastErreur(err);
+      if (/actuel/.test(err.message)) { actuel.classList.add('invalide'); actuel.focus(); }
+    }
+    maj();
+  };
+  actuel.addEventListener('input', () => actuel.classList.remove('invalide'));
+}
+
+async function afficherCle() {
+  const zone = document.getElementById('etat-cle');
+  if (!window.crypto?.subtle) {
+    zone.innerHTML = `<div class="alerte alerte-neutre">${icone('info')}<span>Le chiffrement nécessite une connexion sécurisée (https ou localhost).</span></div>`;
+    return;
+  }
+  const etat = await assurerCles(MOI);
+  const locale = await lireCleLocale(MOI.id);
+  const serveur = await api(`/api/cles/${MOI.id}`);
+  const ok = etat === 'ok' || etat === 'creee';
+  zone.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span class="etat ${ok ? 'etat-ok' : 'etat-ko'}">${ok ? 'Clé active dans ce navigateur' : 'Clé privée absente de ce navigateur'}</span>
+    </div>
+    ${serveur.cle ? `<div class="label" style="margin-bottom:6px">Empreinte de votre clé publique</div><div class="empreinte">${await empreinte(serveur.cle)}</div>` : ''}
+    ${!ok ? `<div class="alerte alerte-danger" style="margin-top:14px">${icone('alerte')}<span>Les messages reçus ne peuvent pas être lus ici. Générer de nouvelles clés rendra les anciens messages définitivement illisibles.</span></div>` : ''}
+    <button class="btn ${ok ? '' : 'btn-primary'}" style="margin-top:14px" data-regenerer>${icone('actualiser', 'icone-sm')}Générer de nouvelles clés</button>`;
+  zone.querySelector('[data-regenerer]').onclick = async () => {
+    const accord = await confirmer({
+      titre: 'Générer de nouvelles clés ?',
+      message: 'Les messages chiffrés avec l’ancienne clé ne pourront plus jamais être lus, sur aucun appareil.',
+      bouton: 'Générer', danger: true, iconeAlerte: 'alerte'
+    });
+    if (!accord) return;
+    await genererPaireDeCles(MOI);
+    toast('Nouvelles clés générées');
+    afficherCle();
+  };
+}
+
+function fermerCompte() {
+  const m = ouvrirModal({
+    titre: 'Fermer votre compte',
+    largeur: 460,
+    corps: `
+      <div class="alerte alerte-danger">${icone('alerte')}<span>Tout sera supprimé : publications, photos, commentaires, j’aime, abonnements et messages. Impossible de revenir en arrière.</span></div>
+      <div class="field">
+        <label for="fermer-mdp">Confirmez avec votre mot de passe</label>
+        <input class="input" id="fermer-mdp" type="password" maxlength="12" autocomplete="current-password">
+      </div>`,
+    pied: `<button class="btn" data-fermer>Garder mon compte</button><button class="btn btn-danger-solid" data-ok disabled>Fermer définitivement</button>`
+  });
+  const champ = m.$('#fermer-mdp');
+  champ.focus();
+  champ.oninput = () => { m.$('[data-ok]').disabled = champ.value.length < 6; };
+  m.$('[data-ok]').onclick = async () => {
+    try {
+      await api('/api/moi', { method: 'DELETE', body: { mdp: champ.value } });
+      location.href = '/login.html?ferme=1';
+    } catch (err) { toastErreur(err); champ.select(); }
+  };
+}
+
+(async () => {
+  await demarrerApp('parametres');
+  document.querySelectorAll('[data-ic]').forEach(s => { s.outerHTML = icone(s.dataset.ic); });
+  document.getElementById('compte-avatar').outerHTML = avatar(MOI.nom, 64, { anneau: true });
+  document.getElementById('compte-nom').textContent = MOI.nom;
+  document.getElementById('compte-meta').innerHTML = `${badgeStatut(MOI.role)} · membre depuis le ${formatDate(MOI.date)}`;
+  const lienProfil = document.getElementById('lien-profil');
+  lienProfil.href = `/profil.html?id=${MOI.id}`;
+  lienProfil.innerHTML = `${icone('profil', 'icone-sm')}Voir mon profil`;
+
+  if (estStaff(MOI.role)) {
+    const staff = document.getElementById('lien-staff');
+    staff.hidden = false;
+    staff.innerHTML = `<div class="alerte alerte-info" style="align-items:center">${icone('bouclier')}<span style="flex:1">Vous faites partie de l’équipe ${MOI.role === 'administrateur' ? 'd’administration' : 'de modération'}.</span>
+      <a class="btn btn-sm btn-primary" href="${MOI.role === 'administrateur' ? '/admin.html' : '/moderation.html'}">Ouvrir la console</a></div>`;
+  }
+
+  brancherMotDePasse();
+  afficherCle().catch(toastErreur);
+  document.getElementById('btn-deconnexion').onclick = deconnexion;
+  if (MOI.role === 'administrateur') {
+    document.getElementById('btn-fermer').disabled = true;
+    document.getElementById('fermer-admin').hidden = false;
+  } else {
+    document.getElementById('btn-fermer').onclick = fermerCompte;
+  }
+})();
+</script>
+</body>
+</html>

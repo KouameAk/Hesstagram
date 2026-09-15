@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff7a1a">
+<title>Connexion · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="auth">
+  <!-- Visuel de marque -->
+  <section class="auth-visuel">
+    <div class="logo"><span class="logo-marque" data-ic="logo"></span>Hesstagram</div>
+    <div class="auth-accroche">
+      <h2>Partagez les moments<br>qui comptent.</h2>
+      <p>Publiez vos photos, suivez vos amis et discutez en privé avec des messages chiffrés de bout en bout.</p>
+    </div>
+    <div class="auth-apercu" aria-hidden="true">
+      <div class="bulle-demo decalee" id="demo-1"></div>
+      <div class="bulle-demo" id="demo-2"></div>
+    </div>
+  </section>
+
+  <!-- Formulaire -->
+  <section class="auth-form">
+    <div class="auth-carte">
+      <div>
+        <h1 id="titre">Bon retour 👋</h1>
+        <p class="intro" id="intro">Connectez-vous pour retrouver votre fil.</p>
+      </div>
+
+      <div class="segmented" role="tablist">
+        <button class="active" id="tab-connexion" type="button" role="tab" aria-selected="true">Connexion</button>
+        <button id="tab-inscription" type="button" role="tab" aria-selected="false">Créer un compte</button>
+      </div>
+
+      <div class="alerte alerte-danger" id="erreur" role="alert" hidden><span data-ic="alerte"></span><span id="erreur-texte"></span></div>
+      <div class="alerte alerte-info" id="info" hidden><span data-ic="info"></span><span id="info-texte"></span></div>
+
+      <form id="form-auth" style="display:flex;flex-direction:column;gap:16px" novalidate>
+        <div class="field">
+          <label for="nom">Nom d’utilisateur <span class="compteur" id="c-nom">0/12</span></label>
+          <div class="input-icone">
+            <span data-ic="profil"></span>
+            <input class="input" id="nom" name="nom" autocomplete="username" autocapitalize="none" spellcheck="false"
+                   required minlength="3" maxlength="12" placeholder="ex. lea.wagner">
+          </div>
+        </div>
+        <div class="field">
+          <label for="mdp">Mot de passe <span class="compteur" id="c-mdp">0/12</span></label>
+          <div class="input-icone">
+            <span data-ic="cadenas"></span>
+            <input class="input" id="mdp" name="mdp" type="password" autocomplete="current-password"
+                   required minlength="6" maxlength="12" placeholder="6 à 12 caractères" style="padding-right:56px">
+            <button class="btn btn-icon btn-sm suffixe" type="button" id="voir-mdp" aria-label="Afficher le mot de passe"><span data-ic="oeil"></span></button>
+          </div>
+        </div>
+        <div class="field" id="champ-confirm" hidden>
+          <label for="mdp2">Confirmer le mot de passe</label>
+          <div class="input-icone">
+            <span data-ic="cadenas"></span>
+            <input class="input" id="mdp2" type="password" autocomplete="new-password" maxlength="12" placeholder="Répétez le mot de passe">
+          </div>
+        </div>
+
+        <div class="auth-regles" id="regles" hidden><ul></ul></div>
+
+        <button class="btn btn-primary btn-block" id="submit" type="submit" style="height:52px;font-size:16px">Se connecter</button>
+      </form>
+
+      <div id="bloc-demo">
+        <div class="label" style="margin-bottom:10px"><span>Comptes de démonstration</span></div>
+        <div class="comptes-demo" id="comptes-demo"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="/app.js"></script>
+<script src="/crypto.js"></script>
+<script>
+let mode = 'connexion';
+const $ = id => document.getElementById(id);
+const champNom = $('nom');
+const champMdp = $('mdp');
+const champMdp2 = $('mdp2');
+const submit = $('submit');
+
+document.querySelectorAll('[data-ic]').forEach(s => { s.outerHTML = icone(s.dataset.ic); });
+
+// Aperçu décoratif du côté marque
+$('demo-1').innerHTML = `${avatar('lea.wagner', 40)}<span><b>lea.wagner</b> a aimé votre publication<br><span class="muted" style="font-size:12.5px">il y a 2 min</span></span>`;
+$('demo-2').innerHTML = `<span class="avatar" style="--taille:40px">${icone('cadenas')}</span><span><b>Message chiffré</b><br><span class="muted" style="font-size:12.5px">Personne d’autre ne peut le lire</span></span>`;
+
+const DEMO = [['admin', 'admin123'], ['marc.r', 'modo123'], ['luca.c', 'luca123'], ['lea.wagner', 'lea123']];
+$('comptes-demo').innerHTML = DEMO.map(([n]) => `<button type="button" data-demo="${n}">${avatar(n, 26)}${n}</button>`).join('');
+document.querySelectorAll('[data-demo]').forEach(b => {
+  b.onclick = () => {
+    const [n, m] = DEMO.find(d => d[0] === b.dataset.demo);
+    setMode('connexion');
+    champNom.value = n;
+    champMdp.value = m;
+    majCompteurs2();
+    submit.focus();
+  };
+});
+
+function majCompteurs2() {
+  for (const [input, sortie] of [[champNom, $('c-nom')], [champMdp, $('c-mdp')]]) {
+    sortie.textContent = `${input.value.length}/12`;
+    sortie.classList.toggle('plein', input.value.length === 12);
+  }
+  if (mode === 'inscription') {
+    const n = champNom.value.trim();
+    const regles = [
+      [n.length >= 3 && n.length <= 12, 'Nom : 3 à 12 caractères'],
+      [!n || /^[\p{L}\p{N}._-]+$/u.test(n), 'Lettres, chiffres, point, tiret ou _'],
+      [champMdp.value.length >= 6, 'Mot de passe : 6 caractères minimum'],
+      [champMdp.value && champMdp.value === champMdp2.value, 'Les deux mots de passe correspondent']
+    ];
+    $('regles').querySelector('ul').innerHTML = regles.map(([ok, t]) => `<li class="${ok && (t.startsWith('Lettres') ? n : true) ? 'ok' : ''}">${icone(ok ? 'coche' : 'horloge')}${t}</li>`).join('');
+  }
+}
+[champNom, champMdp, champMdp2].forEach(i => i.addEventListener('input', () => { majCompteurs2(); $('erreur').hidden = true; }));
+
+function setMode(m) {
+  mode = m;
+  const inscription = m === 'inscription';
+  $('tab-connexion').classList.toggle('active', !inscription);
+  $('tab-inscription').classList.toggle('active', inscription);
+  $('tab-connexion').setAttribute('aria-selected', !inscription);
+  $('tab-inscription').setAttribute('aria-selected', inscription);
+  $('champ-confirm').hidden = !inscription;
+  $('regles').hidden = !inscription;
+  $('bloc-demo').hidden = inscription;
+  champMdp.autocomplete = inscription ? 'new-password' : 'current-password';
+  submit.textContent = inscription ? 'Créer mon compte' : 'Se connecter';
+  $('titre').textContent = inscription ? 'Rejoignez Hesstagram' : 'Bon retour 👋';
+  $('intro').textContent = inscription ? 'Quelques secondes suffisent pour créer votre compte.' : 'Connectez-vous pour retrouver votre fil.';
+  $('erreur').hidden = true;
+  majCompteurs2();
+}
+$('tab-connexion').onclick = () => setMode('connexion');
+$('tab-inscription').onclick = () => setMode('inscription');
+
+$('voir-mdp').onclick = () => {
+  const visible = champMdp.type === 'text';
+  champMdp.type = visible ? 'password' : 'text';
+  $('voir-mdp').setAttribute('aria-label', visible ? 'Afficher le mot de passe' : 'Masquer le mot de passe');
+  $('voir-mdp').style.color = visible ? '' : 'var(--o-600)';
+};
+
+function afficherErreur(texte) {
+  $('erreur-texte').textContent = texte;
+  $('erreur').hidden = false;
+}
+
+$('form-auth').onsubmit = async e => {
+  e.preventDefault();
+  const nom = champNom.value.trim();
+  const mdp = champMdp.value;
+
+  if (!nom || !mdp) return afficherErreur('Renseignez votre nom d’utilisateur et votre mot de passe.');
+  if (nom.length > 12 || mdp.length > 12) return afficherErreur('Nom et mot de passe sont limités à 12 caractères.');
+  if (mode === 'inscription') {
+    if (nom.length < 3) return afficherErreur('Le nom doit faire au moins 3 caractères.');
+    if (mdp.length < 6) return afficherErreur('Le mot de passe doit faire au moins 6 caractères.');
+    if (mdp !== champMdp2.value) return afficherErreur('Les deux mots de passe ne correspondent pas.');
+  }
+
+  submit.disabled = true;
+  submit.textContent = mode === 'connexion' ? 'Connexion…' : 'Création…';
+  try {
+    const moi = await api(mode === 'connexion' ? '/api/connexion' : '/api/inscription',
+      { method: 'POST', body: { nom, mdp } });
+    // Messagerie chiffrée : crée la paire de clés dès la première connexion
+    // (sans écraser une clé existante créée depuis un autre navigateur)
+    try { if (window.crypto?.subtle) await assurerCles(moi); } catch { /* reprise sur la page Messages */ }
+    location.href = accueilSelonRole(moi.role);
+  } catch (err) {
+    afficherErreur(err.message);
+    submit.disabled = false;
+    submit.textContent = mode === 'connexion' ? 'Se connecter' : 'Créer mon compte';
+  }
+};
+
+const params = new URLSearchParams(location.search);
+if (params.get('ferme')) {
+  $('info-texte').textContent = 'Votre compte a bien été fermé. Merci d’avoir utilisé Hesstagram.';
+  $('info').hidden = false;
+}
+if (params.get('mode') === 'inscription') setMode('inscription');
+majCompteurs2();
+
+// Déjà connecté ? → page d'accueil correspondant au statut
+fetch('/api/moi')
+  .then(r => (r.ok ? r.json() : null))
+  .then(moi => { if (moi) location.href = accueilSelonRole(moi.role); });
+</script>
+</body>
+</html>

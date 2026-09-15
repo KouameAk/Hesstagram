@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Explorer · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <a class="btn btn-icon" href="/explorer.html" id="retour" hidden aria-label="Retour à l’exploration"></a>
+      <div style="flex:1;min-width:0">
+        <h1 id="titre">Explorer</h1>
+        <div class="sous-titre" id="sous-titre" hidden></div>
+      </div>
+      <div class="actions" data-actions-entete></div>
+    </header>
+
+    <div class="page colonnes garder-rail">
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <form id="form-recherche" style="display:flex;gap:10px" role="search">
+          <div class="input-icone" style="flex:1">
+            <span id="ic-recherche"></span>
+            <input class="input" id="q" type="search" placeholder="Rechercher un membre ou un #hashtag" autocomplete="off" style="border-radius:999px;background:var(--card);box-shadow:var(--shadow-sm)">
+          </div>
+        </form>
+
+        <!-- Accueil de l'exploration -->
+        <section id="vue-accueil" style="display:flex;flex-direction:column;gap:22px">
+          <div id="bloc-recents" hidden>
+            <div class="card-titre"><h3>Récent</h3><button class="lien-voir" id="effacer-recents">Tout effacer</button></div>
+            <div class="card card-pad" id="recents" style="padding-top:8px;padding-bottom:8px"></div>
+          </div>
+          <div>
+            <div class="card-titre"><h3>Membres à découvrir</h3></div>
+            <div class="grille-profils" id="decouvrir"></div>
+          </div>
+        </section>
+
+        <!-- Résultats de recherche -->
+        <section id="vue-resultats" hidden style="display:flex;flex-direction:column;gap:18px">
+          <div class="chips">
+            <button class="chip active" data-res="comptes">Membres <span class="compteur-badge" id="nb-comptes" style="background:var(--o-100);color:var(--o-800)">0</span></button>
+            <button class="chip" data-res="hashtags">Hashtags <span class="compteur-badge" id="nb-hashtags" style="background:var(--o-100);color:var(--o-800)">0</span></button>
+          </div>
+          <div id="res-comptes" class="grille-profils"></div>
+          <div id="res-hashtags" class="card card-pad" hidden></div>
+        </section>
+
+        <!-- Publications d'un hashtag -->
+        <section id="vue-tag" hidden>
+          <div class="fil" id="fil-tag"></div>
+        </section>
+      </div>
+
+      <aside class="rail">
+        <div class="card card-pad">
+          <div class="card-titre"><h3>Tendances</h3></div>
+          <div id="tendances"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script src="/publications.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const champ = document.getElementById('q');
+const cleRecents = () => `hess-recents-${MOI.id}`;
+let ongletRes = 'comptes';
+
+// ── Recherches récentes (dans ce navigateur) ──
+function lireRecents() { return lireStockage(cleRecents(), []); }
+function ajouterRecent(entree) {
+  const liste = lireRecents().filter(r => !(r.type === entree.type && r.valeur === entree.valeur));
+  ecrireStockage(cleRecents(), [entree, ...liste].slice(0, 8));
+}
+function afficherRecents() {
+  const liste = lireRecents();
+  document.getElementById('bloc-recents').hidden = !liste.length;
+  const zone = document.getElementById('recents');
+  zone.innerHTML = '';
+  liste.forEach((r, i) => {
+    const el = document.createElement('div');
+    el.className = 'ligne-compte';
+    const href = r.type === 'tag' ? `/explorer.html?tag=${encodeURIComponent(r.valeur)}`
+      : r.type === 'compte' ? `/profil.html?id=${r.id}` : `/explorer.html?q=${encodeURIComponent(r.valeur)}`;
+    el.innerHTML = `
+      <a href="${href}" style="display:contents;color:inherit">
+        ${r.type === 'compte' ? avatar(r.valeur, 42)
+          : `<span class="avatar" style="--taille:42px;background:var(--bg);color:var(--ink-2)">${icone(r.type === 'tag' ? 'diese' : 'recherche', 'icone-sm')}</span>`}
+        <span class="infos"><span class="nom ellipsis"></span></span>
+      </a>
+      <button class="btn btn-icon btn-sm" aria-label="Retirer" style="color:var(--o-600)">${icone('fermer', 'icone-sm')}</button>`;
+    el.querySelector('.nom').textContent = r.type === 'tag' ? `#${r.valeur}` : r.valeur;
+    el.querySelector('button').onclick = () => {
+      const l = lireRecents();
+      l.splice(i, 1);
+      ecrireStockage(cleRecents(), l);
+      afficherRecents();
+    };
+    zone.appendChild(el);
+  });
+}
+
+function carteProfil(c) {
+  const el = document.createElement('div');
+  el.className = 'carte-profil';
+  el.innerHTML = `
+    ${c.me_suit && !c.je_suis_abonne ? '<span class="statut statut-user coin">Vous suit</span>' : ''}
+    <a href="/profil.html?id=${c.id}">${avatar(c.nom, 84, { anneau: c.nb_publications > 0 })}</a>
+    <a class="nom" href="/profil.html?id=${c.id}"></a>
+    <div class="sous">${pluriel(c.nb_abonnes, 'abonné')} · ${pluriel(c.nb_publications, 'publication')}</div>`;
+  el.querySelector('.nom').textContent = c.nom;
+  el.querySelector('.nom').addEventListener('click', () => ajouterRecent({ type: 'compte', valeur: c.nom, id: c.id }));
+  if (c.id !== MOI.id) {
+    const b = boutonSuivre(c, { taille: 'btn-sm' });
+    b.classList.add('btn-block');
+    el.appendChild(b);
+  } else {
+    el.insertAdjacentHTML('beforeend', `<a class="btn btn-sm btn-block" href="/profil.html?id=${c.id}">Mon profil</a>`);
+  }
+  return el;
+}
+
+async function chargerDecouvrir() {
+  const zone = document.getElementById('decouvrir');
+  zone.innerHTML = '<div class="skeleton" style="height:230px;border-radius:24px"></div>'.repeat(3);
+  const [suggestions, comptes] = await Promise.all([api('/api/suggestions'), api('/api/recherche?q=%25')]);
+  const liste = suggestions.length ? suggestions : comptes.comptes.filter(c => c.id !== MOI.id).slice(0, 6);
+  zone.innerHTML = '';
+  if (!liste.length) zone.innerHTML = '<p class="muted">Aucun membre à suggérer pour le moment.</p>';
+  for (const c of liste) zone.appendChild(carteProfil(c));
+}
+
+async function chargerTendances() {
+  const t = await api('/api/tendances');
+  document.getElementById('tendances').innerHTML = t.length
+    ? t.map(x => `<a class="tendance" href="/explorer.html?tag=${encodeURIComponent(x.nom.slice(1))}"><span class="tag">${escapeHtml(x.nom)}</span><span class="nb">${pluriel(x.total, 'publication')}</span></a>`).join('')
+    : '<p class="muted" style="font-size:14px">Aucun hashtag pour l’instant.</p>';
+}
+
+// ── Recherche (déclenchée pendant la frappe, avec délai) ──
+let minuteur;
+let derniereRequete = 0;
+async function rechercher(q) {
+  const n = ++derniereRequete;
+  const { comptes, hashtags } = await api(`/api/recherche?q=${encodeURIComponent(q)}`);
+  if (n !== derniereRequete) return;                     // une frappe plus récente a pris le relais
+  document.getElementById('nb-comptes').textContent = comptes.length;
+  document.getElementById('nb-hashtags').textContent = hashtags.length;
+
+  const zc = document.getElementById('res-comptes');
+  zc.innerHTML = '';
+  if (!comptes.length) zc.innerHTML = `<div class="card vide" style="grid-column:1/-1"><div class="illu">${icone('profil')}</div><h3>Aucun membre trouvé</h3><p>Vérifiez l’orthographe du nom.</p></div>`;
+  for (const c of comptes) zc.appendChild(carteProfil(c));
+
+  const zh = document.getElementById('res-hashtags');
+  zh.innerHTML = hashtags.length
+    ? hashtags.map(h => `<a class="tendance" href="/explorer.html?tag=${encodeURIComponent(h.nom.slice(1))}" data-tag="${escapeHtml(h.nom.slice(1))}"><span class="tag">${escapeHtml(h.nom)}</span><span class="nb">${pluriel(h.total, 'publication')}</span></a>`).join('')
+    : `<div class="vide"><div class="illu">${icone('diese')}</div><h3>Aucun hashtag</h3></div>`;
+  zh.querySelectorAll('[data-tag]').forEach(a => a.addEventListener('click', () => ajouterRecent({ type: 'tag', valeur: a.dataset.tag })));
+
+  // Aller directement sur l'onglet qui a des résultats
+  if (!comptes.length && hashtags.length) choisirOnglet('hashtags');
+}
+
+function choisirOnglet(nom) {
+  ongletRes = nom;
+  document.querySelectorAll('[data-res]').forEach(b => b.classList.toggle('active', b.dataset.res === nom));
+  document.getElementById('res-comptes').hidden = nom !== 'comptes';
+  document.getElementById('res-hashtags').hidden = nom !== 'hashtags';
+}
+document.querySelectorAll('[data-res]').forEach(b => { b.onclick = () => choisirOnglet(b.dataset.res); });
+
+function majVue() {
+  const q = champ.value.trim();
+  document.getElementById('vue-accueil').hidden = !!q;
+  document.getElementById('vue-resultats').hidden = !q;
+  clearTimeout(minuteur);
+  if (q) {
+    // « #rando » cherche d'abord les hashtags
+    choisirOnglet(q.startsWith('#') ? 'hashtags' : 'comptes');
+    minuteur = setTimeout(() => rechercher(q).catch(toastErreur), 220);
+  } else {
+    afficherRecents();
+  }
+}
+
+(async () => {
+  await demarrerApp('explorer');
+  document.getElementById('ic-recherche').outerHTML = icone('recherche');
+  chargerTendances();
+
+  const tag = params.get('tag');
+  if (tag) {
+    // Vue d'un hashtag
+    document.getElementById('form-recherche').hidden = true;
+    document.getElementById('vue-accueil').hidden = true;
+    document.getElementById('vue-tag').hidden = false;
+    document.getElementById('titre').textContent = `#${tag}`;
+    document.title = `#${tag} · Hesstagram`;
+    const retour = document.getElementById('retour');
+    retour.hidden = false;
+    retour.innerHTML = icone('retour');
+    ajouterRecent({ type: 'tag', valeur: tag });
+    const pubs = await chargerFil(document.getElementById('fil-tag'), `/api/publications?tag=${encodeURIComponent(tag)}`, {
+      vide: `<div class="illu">${icone('diese')}</div><h3>Aucune publication avec #${escapeHtml(tag)}</h3><p>Utilisez ce hashtag dans une publication pour le lancer.</p>`
+    });
+    const st = document.getElementById('sous-titre');
+    st.hidden = false;
+    st.textContent = pluriel(pubs.length, 'publication');
+    return;
+  }
+
+  champ.oninput = majVue;
+  document.getElementById('form-recherche').onsubmit = e => {
+    e.preventDefault();
+    const q = champ.value.trim();
+    if (!q) return;
+    ajouterRecent({ type: 'recherche', valeur: q });
+    rechercher(q).catch(toastErreur);
+  };
+  document.getElementById('effacer-recents').onclick = () => { ecrireStockage(cleRecents(), []); afficherRecents(); };
+
+  if (params.get('q')) champ.value = params.get('q');
+  majVue();
+  chargerDecouvrir();
+  if (!params.get('q')) champ.focus({ preventScroll: true });
+})();
+</script>
+</body>
+</html>
