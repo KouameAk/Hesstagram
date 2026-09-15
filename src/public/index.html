@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test authentification - Hesstagram</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    max-width: 420px;
+    margin: 40px auto;
+    padding: 0 16px;
+    color: #222;
+  }
+  h1 { font-size: 1.3rem; }
+  section {
+    margin-bottom: 28px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+  }
+  h2 { font-size: 1.05rem; margin-top: 0; }
+  label { display: block; margin-top: 10px; font-size: 0.9rem; }
+  input {
+    width: 100%;
+    padding: 6px 8px;
+    margin-top: 4px;
+    box-sizing: border-box;
+  }
+  button {
+    margin-top: 14px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  pre {
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.8rem;
+    min-height: 1em;
+  }
+</style>
+</head>
+<body>
+  <h1>Page de test - Authentification</h1>
+
+  <section>
+    <h2>Inscription</h2>
+    <form id="form-register">
+      <label>Nom d'utilisateur
+        <input type="text" name="nom" required>
+      </label>
+      <label>Mot de passe
+        <input type="password" name="mdp" required>
+      </label>
+      <button type="submit">Créer le compte</button>
+    </form>
+    <pre id="resultat-register"></pre>
+  </section>
+
+  <section>
+    <h2>Connexion</h2>
+    <form id="form-login">
+      <label>Nom d'utilisateur
+        <input type="text" name="nom" required>
+      </label>
+      <label>Mot de passe
+        <input type="password" name="mdp" required>
+      </label>
+      <button type="submit">Se connecter</button>
+    </form>
+    <pre id="resultat-login"></pre>
+  </section>
+
+  <script>
+    // Fonction générique : envoie les données du formulaire en POST
+    // à l'API, et affiche la réponse brute dans la zone de résultat.
+    async function appelerApi(url, donnees, zoneResultat) {
+      try {
+        const reponse = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(donnees)
+        });
+        const data = await reponse.json();
+        zoneResultat.textContent = JSON.stringify(data, null, 2);
+      } catch (erreur) {
+        zoneResultat.textContent = 'Erreur réseau : ' + erreur.message;
+      }
+    }
+
+    // Formulaire d'inscription
+    document.getElementById('form-register').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const donnees = Object.fromEntries(new FormData(e.target));
+      appelerApi('/api/auth/register', donnees, document.getElementById('resultat-register'));
+    });
+
+    // Formulaire de connexion
+    // Ici on ne réutilise pas appelerApi : en cas de succès, on doit
+    // en plus mémoriser le token et rediriger vers la page d'accueil.
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const donnees = Object.fromEntries(new FormData(e.target));
+      const zoneResultat = document.getElementById('resultat-login');
+
+      try {
+        const reponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(donnees)
+        });
+        const data = await reponse.json();
+        zoneResultat.textContent = JSON.stringify(data, null, 2);
+
+        // Connexion réussie : on garde le token (nécessaire plus tard
+        // pour accéder aux routes protégées) et le nom, puis on redirige
+        // vers la page qui s'affiche une fois connecté.
+        if (reponse.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('nom', data.user.nom);
+          window.location.href = 'accueil.html';
+        }
+      } catch (erreur) {
+        zoneResultat.textContent = 'Erreur réseau : ' + erreur.message;
+      }
+    });
+  </script>
+</body>
+</html>
