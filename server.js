@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from './src/bdd/connexion.js';
 import { creerRoutesAuth } from './src/routes/auth.routes.js';
+import { creerRoutesPublication } from './src/routes/publication.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'src/public')));
 
 app.use('/api/auth', creerRoutesAuth(db));
+app.use('/api/publications', creerRoutesPublication(db));
 
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);

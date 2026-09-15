@@ -12,9 +12,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import bcrypt from 'bcryptjs';
-import * as utilisateurRepository from '../src/repositories/utilisateur.repository.js';
-import { inscrire, connecter, ErreurAuth } from '../src/services/auth.service.js';
-import { ouvrirBase } from '../src/bdd/connexion.js';
+import * as utilisateurRepository from './src/repositories/utilisateur.repository.js';
+import { inscrire, connecter, ErreurAuth } from './src/services/auth.service.js';
+import { ouvrirBase } from './src/bdd/connexion.js';
 
 describe('auth.service.js - logique métier', () => {
   it('inscrire() refuse si nom ou mdp manquant', async () => {
