@@ -113,6 +113,35 @@
       input.type = visible ? 'password' : 'text';
       bouton.classList.toggle('est-actif', !visible);
       bouton.setAttribute('aria-label', visible ? 'Afficher le mot de passe' : 'Masquer le mot de passe');
+    // Formulaire de connexion
+    // Ici on ne réutilise pas appelerApi : en cas de succès, on doit
+    // en plus mémoriser le token et rediriger vers la page d'accueil.
+    document.getElementById('form-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const donnees = Object.fromEntries(new FormData(e.target));
+      const zoneResultat = document.getElementById('resultat-login');
+
+      try {
+        const reponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(donnees)
+        });
+        const data = await reponse.json();
+        zoneResultat.textContent = JSON.stringify(data, null, 2);
+
+        // Connexion réussie : on garde le token (nécessaire plus tard
+        // pour accéder aux routes protégées) et le nom, puis on redirige
+        // vers la page qui s'affiche une fois connecté.
+        if (reponse.ok && data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('nom', data.user.nom);
+          localStorage.setItem('role', data.user.role);
+          window.location.href = 'accueil.html';
+        }
+      } catch (erreur) {
+        zoneResultat.textContent = 'Erreur réseau : ' + erreur.message;
+      }
     });
   });
 
