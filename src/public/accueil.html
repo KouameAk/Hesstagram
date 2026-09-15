@@ -24,8 +24,13 @@
   <h1>Bienvenue, <span id="nom-utilisateur"></span></h1>
   <p>Page vide pour l'instant, le contenu (fil, profil...) viendra dans une prochaine étape.</p>
   <a href="publier.html"><button>Créer une publication</button></a>
+
+  <p><a href="messagerie.html">Messagerie</a></p>
+  <p id="lien-admin" hidden><a href="admin.html">Administration</a></p>
+
   <button id="btn-logout">Se déconnecter</button>
 
+  <script src="token.js"></script>
   <script>
     // Récupère ce qui a été stocké par index.html lors de la connexion.
     // S'il n'y a rien, personne n'est connecté : retour à la page de login.
@@ -36,6 +41,11 @@
       window.location.href = 'index.html';
     } else {
       document.getElementById('nom-utilisateur').textContent = nom;
+    }
+
+    // Le lien admin n'apparaît que pour les comptes admin.
+    if (utilisateurConnecte()?.role === 'admin') {
+      document.getElementById('lien-admin').hidden = false;
     }
 
     // Déconnexion : on efface les infos stockées et on revient au login.

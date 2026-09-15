@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messagerie - Hesstagram</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 500px; margin: 40px auto; padding: 0 16px; color: #222; }
+  #zone-messages { border: 1px solid #ddd; border-radius: 6px; padding: 10px; height: 300px; overflow-y: auto; margin-top: 10px; }
+  .message { margin: 4px 0; }
+  .moi { text-align: right; color: #0060df; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 6px; margin-top: 6px; }
+  button { margin-top: 8px; padding: 6px 12px; cursor: pointer; }
+  #message-erreur { color: #b00020; }
+</style>
+</head>
+<body>
+  <p><a href="accueil.html">← Accueil</a></p>
+  <h1>Messagerie</h1>
+
+  <p id="message-non-connecte" hidden>Tu dois être connecté pour accéder à la messagerie.</p>
+
+  <div id="contenu-page" hidden>
+    <label>Discuter avec (nom d'utilisateur) :
+      <input id="champ-destinataire" type="text" placeholder="ex: bob" />
+    </label>
+    <button id="btn-demarrer" disabled>Démarrer la conversation</button>
+    <p id="message-erreur"></p>
+
+    <div id="zone-messages"></div>
+
+    <input id="champ-message" type="text" placeholder="Choisis d'abord un destinataire..." disabled />
+  </div>
+
+  <script src="token.js"></script>
+  <script src="chiffrement-navigateur.js"></script>
+  <script>
+    const moi = utilisateurConnecte();
+    let mesCles;
+    let cleSecrete = null;
+    let idDestinataire = null;
+    let socket = null;
+
+    // Mes clés sont créées une seule fois dans ce navigateur, puis
+    // réutilisées. La case du localStorage est propre à mon id : si
+    // plusieurs comptes sont testés dans le même navigateur, chacun garde
+    // sa propre paire de clés au lieu de réutiliser celle d'un autre compte.
+    async function initialiserMesCles() {
+      const cleStockage = `mes_cles_messagerie_${moi.id}`;
+      const sauvegarde = localStorage.getItem(cleStockage);
+      if (sauvegarde) {
+        mesCles = JSON.parse(sauvegarde);
+        return;
+      }
+      mesCles = await creerCles();
+      const reponse = await fetch('/api/messagerie/cle-publique', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...enTeteAvecToken() },
+        body: JSON.stringify({ publicKey: mesCles.publicKey }),
+      });
+      if (!reponse.ok) {
+        document.getElementById('message-erreur').textContent =
+          "Impossible d'enregistrer ta clé publique, réessaie de recharger la page.";
+        return;
+      }
+      // On ne sauvegarde qu'une fois l'enregistrement confirmé côté serveur.
+      localStorage.setItem(cleStockage, JSON.stringify(mesCles));
+    }
+
+    function afficherMessage(texte, deMoi) {
+      const zone = document.getElementById('zone-messages');
+      const ligne = document.createElement('div');
+      ligne.className = deMoi ? 'message moi' : 'message';
+      ligne.textContent = texte;
+      zone.appendChild(ligne);
+      zone.scrollTop = zone.scrollHeight;
+    }
+
+    function connecterSocket() {
+      if (socket) return;
+      socket = new WebSocket(`ws://${location.host}?token=${obtenirToken()}`);
+
+      // On essaie de déchiffrer chaque message avec la clé de la conversation
+      // en cours : ceux d'une autre conversation ne se déchiffrent pas
+      // (mauvaise clé) et sont simplement ignorés ici.
+      socket.addEventListener('message', async (evenement) => {
+        const recu = JSON.parse(evenement.data);
+
+        if (recu.type === 'historique') {
+          for (const messagePasse of recu.messages) {
+            try {
+              const texte = await dechiffrerMessage(messagePasse, cleSecrete);
+              afficherMessage(texte, messagePasse.expediteurId === moi.id);
+            } catch {
+              // pas la bonne conversation
+            }
+          }
+        }
+
+        if (recu.type === 'message') {
+          try {
+            const texte = await dechiffrerMessage(recu.contenu, cleSecrete);
+            afficherMessage(texte, false);
+          } catch {
+            // pas la bonne conversation
+          }
+        }
+      });
+    }
+
+    document.getElementById('btn-demarrer').addEventListener('click', async () => {
+      const nom = document.getElementById('champ-destinataire').value.trim();
+      const zoneErreur = document.getElementById('message-erreur');
+      zoneErreur.textContent = '';
+      if (!nom) return;
+
+      const reponse = await fetch(`/api/messagerie/cle-publique/${encodeURIComponent(nom)}`, {
+        headers: enTeteAvecToken(),
+      });
+
+      if (!reponse.ok) {
+        const erreur = await reponse.json();
+        zoneErreur.textContent = erreur.error;
+        return;
+      }
+
+      const destinataire = await reponse.json();
+      idDestinataire = destinataire.id;
+      cleSecrete = await obtenirCleSecrete(mesCles.privateKey, destinataire.publicKey);
+
+      document.getElementById('zone-messages').innerHTML = '';
+      document.getElementById('champ-message').disabled = false;
+      document.getElementById('champ-message').placeholder = `Message à ${destinataire.nom}...`;
+
+      connecterSocket();
+    });
+
+    document.getElementById('champ-message').addEventListener('keydown', async (evenement) => {
+      if (evenement.key !== 'Enter' || !cleSecrete) return;
+
+      const texte = evenement.target.value;
+      if (!texte) return;
+      evenement.target.value = '';
+
+      const chiffre = await chiffrerMessage(texte, cleSecrete);
+      socket.send(JSON.stringify({ type: 'message', versId: String(idDestinataire), contenu: chiffre }));
+      afficherMessage(texte, true);
+    });
+
+    (async () => {
+      if (!bloquerSiPasConnecte('contenu-page')) return;
+      await initialiserMesCles();
+      document.getElementById('btn-demarrer').disabled = false;
+    })();
+  </script>
+</body>
+</html>
