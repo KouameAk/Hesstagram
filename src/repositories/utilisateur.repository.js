@@ -22,3 +22,11 @@ export function creerUtilisateur(db, { nom, mdpHash, date, role }) {
     .prepare('INSERT INTO utilisateur (nom, mdp, date, role) VALUES (?, ?, ?, ?)')
     .run(nom, mdpHash, date, role);
 }
+
+export function listerUtilisateurs(db) {
+  return db.prepare('SELECT id, nom, role FROM utilisateur ORDER BY nom').all();
+}
+
+export function definirRole(db, userId, role) {
+  db.prepare('UPDATE utilisateur SET role = ? WHERE id = ?').run(role, userId);
+}

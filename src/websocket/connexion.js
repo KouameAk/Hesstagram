@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws';
+import jwt from 'jsonwebtoken';
 import { creerRegistre } from '../services/messagerie.service.js';
-import { ouvrirBase } from '../bdd/connexion.js';
 import {
   creerConversationPrivee,
   enregistrerMessage,
@@ -8,20 +8,23 @@ import {
   obtenirHistorique,
 } from '../repositories/messagerie.repository.js';
 
-// Branche les connexions WebSocket sur le service (routage) et la BDD (sauvegarde).
-// TODO: pour l'instant ouvre son propre port, à connecter au serveur Express
-// commun plus tard (new WebSocketServer({ server }) au lieu de { port }).
-export function demarrerServeur(port, cheminBase) {
-  const db = ouvrirBase(cheminBase);
+const JWT_SECRET = process.env.JWT_SECRET || 'secret_temporaire_hesstagram';
+
+// Branche la messagerie temps réel sur le serveur HTTP et la BDD déjà
+// ouverts par server.js. Un WebSocket ne permet pas d'en-tête Authorization,
+// donc le token JWT passe en ?token=... dans l'URL de connexion.
+export function demarrerMessagerie(serveurHttp, db) {
   const registre = creerRegistre();
-  const wss = new WebSocketServer({ port });
+  const wss = new WebSocketServer({ server: serveurHttp });
 
   wss.on('connection', (socket, requete) => {
-    // TODO: identification bidon (?userId=3), remplacer par la vraie auth
     const url = new URL(requete.url ?? '', 'http://localhost');
-    const userId = Number(url.searchParams.get('userId'));
+    const token = url.searchParams.get('token');
 
-    if (!userId) {
+    let userId;
+    try {
+      userId = jwt.verify(token, JWT_SECRET).id;
+    } catch {
       socket.close();
       return;
     }
@@ -65,9 +68,6 @@ export function demarrerServeur(port, cheminBase) {
     });
   });
 
-  console.log(`Serveur de messagerie WebSocket démarré sur le port ${port}`);
+  console.log('Messagerie WebSocket branchée sur le serveur HTTP');
   return wss;
 }
-
-// lancé avec `npm run ws` ; PORT et DB_PATH pour changer les valeurs par défaut
-demarrerServeur(Number(process.env.PORT) || 8080, process.env.DB_PATH || 'data/hesstagram.sqlite');

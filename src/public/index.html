@@ -121,6 +121,7 @@
         if (reponse.ok && data.token) {
           localStorage.setItem('token', data.token);
           localStorage.setItem('nom', data.user.nom);
+          localStorage.setItem('role', data.user.role);
           window.location.href = 'accueil.html';
         }
       } catch (erreur) {

@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS `utilisateur` (
     `mdp` TEXT NOT NULL,
     `date` DATETIME,
     `role` VARCHAR(255),
-    `cle_publique` TEXT
+    `cle_publique` TEXT,
+    `banni` BOOLEAN NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS `ami` (

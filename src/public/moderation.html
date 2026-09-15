@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Modération — signalements</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+    .banni { color: #b00020; font-weight: bold; }
+    button { cursor: pointer; }
+    #champ-token { width: 100%; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <h1>Utilisateurs signalés</h1>
+
+  <label for="champ-token">Token modo/admin (obtenu via /api/auth/login) :</label>
+  <input id="champ-token" type="text" placeholder="Colle ton token ici" />
+
+  <p id="message-non-connecte" hidden>Tu dois être connecté (colle ton token ci-dessus) pour voir cette page.</p>
+
+  <div id="contenu-page" hidden>
+    <p><a href="/admin.html">← Gestion des rôles</a></p>
+    <table>
+      <thead>
+        <tr><th>Utilisateur</th><th>Rôle</th><th>Signalements</th><th>Statut</th><th></th></tr>
+      </thead>
+      <tbody id="corps-tableau"></tbody>
+    </table>
+  </div>
+
+  <script src="token.js"></script>
+  <script>
+    async function chargerSignalements() {
+      const reponse = await fetch('/api/moderation/signalements', { headers: enTeteAvecToken() });
+      const corps = document.getElementById('corps-tableau');
+
+      if (!reponse.ok) {
+        corps.innerHTML = `<tr><td colspan="5">Erreur (${reponse.status}) : vérifie ton token ci-dessus.</td></tr>`;
+        return;
+      }
+
+      const utilisateurs = await reponse.json();
+      corps.innerHTML = '';
+
+      if (utilisateurs.length === 0) {
+        corps.innerHTML = '<tr><td colspan="5">Aucun utilisateur signalé.</td></tr>';
+        return;
+      }
+
+      for (const utilisateur of utilisateurs) {
+        const ligne = document.createElement('tr');
+
+        const colonneNom = document.createElement('td');
+        colonneNom.textContent = utilisateur.nom;
+
+        const colonneRole = document.createElement('td');
+        colonneRole.textContent = utilisateur.role ?? 'user';
+
+        const colonneNombre = document.createElement('td');
+        colonneNombre.textContent = utilisateur.nombre_signalements;
+
+        const colonneStatut = document.createElement('td');
+        colonneStatut.textContent = utilisateur.banni ? 'Banni' : 'Actif';
+        if (utilisateur.banni) colonneStatut.classList.add('banni');
+
+        const colonneAction = document.createElement('td');
+        const bouton = document.createElement('button');
+        bouton.textContent = utilisateur.banni ? 'Débannir' : 'Bannir';
+        bouton.addEventListener('click', () => bannir(utilisateur.id, !utilisateur.banni));
+        colonneAction.appendChild(bouton);
+
+        ligne.append(colonneNom, colonneRole, colonneNombre, colonneStatut, colonneAction);
+        corps.appendChild(ligne);
+      }
+    }
+
+    async function bannir(id, banni) {
+      await fetch(`/api/moderation/utilisateurs/${id}/banni`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...enTeteAvecToken() },
+        body: JSON.stringify({ banni }),
+      });
+      chargerSignalements();
+    }
+
+    initialiserChampToken();
+    if (bloquerSiPasConnecte('contenu-page')) {
+      chargerSignalements();
+    }
+  </script>
+</body>
+</html>
