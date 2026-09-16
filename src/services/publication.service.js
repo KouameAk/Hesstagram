@@ -1,5 +1,7 @@
 import * as publicationRepository from '../repositories/publication.repository.js';
 import * as utilisateurRepository from '../repositories/utilisateur.repository.js';
+import { creerPublication } from '../repositories/publication.repository.js'; // Ajuste le chemin si besoin
+
 
 export class ErreurPublication extends Error {
   constructor(message) {
@@ -35,4 +37,8 @@ export async function publierVideo(db, { idUtilisateur, description, nomFichier,
 
 export async function recupererVideos(db) {
   return publicationRepository.trouverPublicationsVideos(db);
+}
+export async function publierPhoto(db, donnees) {
+    if (!donnees.nomFichier) throw new ErreurPublication("Le fichier image est manquant.");
+    return creerPublication(db, donnees);
 }

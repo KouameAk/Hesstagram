@@ -91,14 +91,15 @@
   
   <h1>Nouvelle publication</h1>
 
+  <!-- LES BOUTONS DES ONGLETS -->
   <div class="tabs">
     <button class="tab active" data-target="tab-video">Vidéo</button>
     <button class="tab" data-target="tab-photo">Photo</button>
   </div>
 
+  <!-- LE FORMULAIRE VIDÉO -->
   <div id="tab-video" class="tab-content active">
     <form id="form-video" enctype="multipart/form-data">
-      <!-- On passe l'ID utilisateur caché (en vrai on devrait l'extraire du JWT côté serveur) -->
       <input type="hidden" name="idUtilisateur" id="idUtilisateurVideo" value="1">
       
       <label>Fichier vidéo
@@ -114,64 +115,57 @@
     <div id="message-video" class="message"></div>
   </div>
 
+  <!-- LE FORMULAIRE PHOTO (TON TRAVAIL) -->
   <div id="tab-photo" class="tab-content">
-    <p><em>Le téléchargement de photos n'est pas encore disponible.</em></p>
-    <form id="form-photo" style="opacity: 0.5; pointer-events: none;">
+    <form id="form-photo" enctype="multipart/form-data">
+      <input type="hidden" name="idUtilisateur" id="idUtilisateurPhoto" value="1">
+      
       <label>Fichier image
-        <input type="file" name="photo" accept="image/*" disabled>
+        <input type="file" name="photo" accept="image/*" required>
       </label>
       
       <label>Description
-        <textarea name="description" rows="4" disabled></textarea>
+        <textarea name="description" rows="4" placeholder="Écrivez une légende..."></textarea>
       </label>
 
-      <button type="button" disabled>Publier la photo</button>
+      <button type="submit">Publier la photo</button>
     </form>
+    <div id="message-photo" class="message"></div>
   </div>
 
   <script>
-    // Récupérer le pseudo (ou l'ID) si on l'a (pour le moment on met 1 par défaut 
-    // car on n'a pas l'ID de l'utilisateur dans le local storage, juste son token et nom)
-    // Idéalement, l'API devrait extraire l'ID du JWT, mais pour tester avec la route actuelle :
-    document.getElementById('idUtilisateurVideo').value = 1; // ID statique pour le test
-
-    // Gestion des onglets
+    // 1. GESTION DES ONGLETS (Ce qui bloquait !)
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
 
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        // Enlever la classe active partout
+        // Retire l'état actif partout
         tabs.forEach(t => t.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
         
-        // Ajouter la classe active sur l'onglet cliqué
+        // Active le bon onglet
         tab.classList.add('active');
         document.getElementById(tab.dataset.target).classList.add('active');
       });
     });
 
-    // Envoi du formulaire vidéo
+    // 2. GESTION DU FORMULAIRE VIDÉO
     const formVideo = document.getElementById('form-video');
     const msgVideo = document.getElementById('message-video');
 
     formVideo.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
       msgVideo.className = 'message';
       msgVideo.textContent = 'Envoi et conversion en cours... Veuillez patienter.';
       msgVideo.style.display = 'block';
 
-      const formData = new FormData(formVideo);
-
       try {
         const response = await fetch('/api/publications/video', {
           method: 'POST',
-          body: formData // multer a besoin de formData, pas de JSON
+          body: new FormData(formVideo)
         });
-
         const data = await response.json();
-
         if (response.ok) {
           msgVideo.className = 'message success';
           msgVideo.textContent = 'Vidéo publiée avec succès !';
@@ -183,6 +177,36 @@
       } catch (err) {
         msgVideo.className = 'message error';
         msgVideo.textContent = 'Erreur réseau : ' + err.message;
+      }
+    });
+
+    // 3. GESTION DU FORMULAIRE PHOTO
+    const formPhoto = document.getElementById('form-photo');
+    const msgPhoto = document.getElementById('message-photo');
+
+    formPhoto.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgPhoto.className = 'message';
+      msgPhoto.textContent = 'Envoi de la photo en cours...';
+      msgPhoto.style.display = 'block';
+
+      try {
+        const response = await fetch('/api/publications/photo', {
+          method: 'POST',
+          body: new FormData(formPhoto)
+        });
+        const data = await response.json();
+        if (response.ok) {
+          msgPhoto.className = 'message success';
+          msgPhoto.textContent = 'Photo publiée avec succès !';
+          formPhoto.reset();
+        } else {
+          msgPhoto.className = 'message error';
+          msgPhoto.textContent = data.message || 'Une erreur est survenue.';
+        }
+      } catch (err) {
+        msgPhoto.className = 'message error';
+        msgPhoto.textContent = 'Erreur réseau : ' + err.message;
       }
     });
   </script>
