@@ -19,6 +19,7 @@ import { creerRoutesModeration } from './src/routes/moderation.routes.js';
 import { creerRoutesMessagerie } from './src/routes/messagerie.routes.js';
 import { demarrerMessagerie } from './src/websocket/connexion.js';
 import { creerRoutesLikes } from './src/routes/likes.routes.js';
+import { creerRoutesDislikes } from './src/routes/dislikes.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api', creerRoutesUtilisateurs(db));
 app.use('/api', creerRoutesModeration(db));
 app.use('/api', creerRoutesMessagerie(db));
 app.use('/api/publications', creerRoutesLikes(db));
+app.use('/api/publications', creerRoutesDislikes(db));
 
 const serveurHttp = app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
