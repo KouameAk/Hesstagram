@@ -86,7 +86,23 @@ export function creerRoutesLikes(db) {
     return convertirId(req.user?.id ?? req.body?.id_utilisateur);
   }
 
-  const ajouterLike = db.transaction((idPublication, idUtilisateur) => {
+  // node:sqlite n'a pas de db.transaction() (contrairement à better-sqlite3) :
+  // on fait la même chose à la main, avec BEGIN/COMMIT/ROLLBACK.
+  function creerTransaction(fonction) {
+    return (...args) => {
+      db.exec('BEGIN');
+      try {
+        const resultat = fonction(...args);
+        db.exec('COMMIT');
+        return resultat;
+      } catch (erreur) {
+        db.exec('ROLLBACK');
+        throw erreur;
+      }
+    };
+  }
+
+  const ajouterLike = creerTransaction((idPublication, idUtilisateur) => {
     if (!chercherPublication.get(idPublication)) {
       return { erreur: 'PUBLICATION_INTROUVABLE' };
     }
@@ -129,7 +145,7 @@ export function creerRoutesLikes(db) {
     };
   });
 
-  const enleverLike = db.transaction((idPublication, idUtilisateur) => {
+  const enleverLike = creerTransaction((idPublication, idUtilisateur) => {
     if (!chercherPublication.get(idPublication)) {
       return { erreur: 'PUBLICATION_INTROUVABLE' };
     }
