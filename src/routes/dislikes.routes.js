@@ -1,14 +1,14 @@
 import { Router } from 'express';
 
 /**
- * Backend de la fonctionnalité like / unlike.
+ * Backend de la fonctionnalité dislike / undislike.
  *
- * POST   /api/publications/:id/like
- * DELETE /api/publications/:id/like
+ * POST   /api/publications/:id/dislike
+ * DELETE /api/publications/:id/dislike
  *
  * Comportement important :
- * - si l'utilisateur dislike déjà la publication et clique sur Like,
- *   le dislike est retiré automatiquement avant d'ajouter le like ;
+ * - si l'utilisateur like déjà la publication et clique sur Dislike,
+ *   le like est retiré automatiquement avant d'ajouter le dislike ;
  * - l'ensemble est exécuté dans une transaction SQLite.
  *
  * Pour cette démo, l'id de l'utilisateur est envoyé dans le JSON :
@@ -17,7 +17,7 @@ import { Router } from 'express';
  * Dans l'application finale, il faudra prendre req.user.id depuis
  * le middleware d'authentification et ne plus faire confiance au body.
  */
-export function creerRoutesLikes(db) {
+export function creerRoutesDislikes(db) {
   const router = Router();
 
   const chercherPublication = db.prepare(`
@@ -28,26 +28,21 @@ export function creerRoutesLikes(db) {
     SELECT id FROM utilisateur WHERE id = ?
   `);
 
-  const chercherLike = db.prepare(`
-    SELECT 1
-    FROM "like"
-    WHERE id_pub = ? AND id_utilisateur = ?
-  `);
-
   const chercherDislike = db.prepare(`
     SELECT 1
     FROM dislike
     WHERE id_pub = ? AND id_util = ?
   `);
 
-  const insererLike = db.prepare(`
-    INSERT INTO "like" (id_pub, id_utilisateur)
-    VALUES (?, ?)
+  const chercherLike = db.prepare(`
+    SELECT 1
+    FROM "like"
+    WHERE id_pub = ? AND id_utilisateur = ?
   `);
 
-  const supprimerLike = db.prepare(`
-    DELETE FROM "like"
-    WHERE id_pub = ? AND id_utilisateur = ?
+  const insererDislike = db.prepare(`
+    INSERT INTO dislike (id_pub, id_util)
+    VALUES (?, ?)
   `);
 
   const supprimerDislike = db.prepare(`
@@ -55,18 +50,23 @@ export function creerRoutesLikes(db) {
     WHERE id_pub = ? AND id_util = ?
   `);
 
-  const synchroniserCompteurLikes = db.prepare(`
-    UPDATE publication
-    SET "like" = (
-      SELECT COUNT(*) FROM "like" WHERE id_pub = ?
-    )
-    WHERE id = ?
+  const supprimerLike = db.prepare(`
+    DELETE FROM "like"
+    WHERE id_pub = ? AND id_utilisateur = ?
   `);
 
   const synchroniserCompteurDislikes = db.prepare(`
     UPDATE publication
     SET "dislike" = (
       SELECT COUNT(*) FROM dislike WHERE id_pub = ?
+    )
+    WHERE id = ?
+  `);
+
+  const synchroniserCompteurLikes = db.prepare(`
+    UPDATE publication
+    SET "like" = (
+      SELECT COUNT(*) FROM "like" WHERE id_pub = ?
     )
     WHERE id = ?
   `);
@@ -86,7 +86,7 @@ export function creerRoutesLikes(db) {
     return convertirId(req.user?.id ?? req.body?.id_utilisateur);
   }
 
-  const ajouterLike = db.transaction((idPublication, idUtilisateur) => {
+  const ajouterDislike = db.transaction((idPublication, idUtilisateur) => {
     if (!chercherPublication.get(idPublication)) {
       return { erreur: 'PUBLICATION_INTROUVABLE' };
     }
@@ -95,22 +95,22 @@ export function creerRoutesLikes(db) {
       return { erreur: 'UTILISATEUR_INTROUVABLE' };
     }
 
-    const avaitDejaLike = Boolean(
-      chercherLike.get(idPublication, idUtilisateur)
-    );
-
-    const avaitDislike = Boolean(
+    const avaitDejaDislike = Boolean(
       chercherDislike.get(idPublication, idUtilisateur)
     );
 
-    // Si l'utilisateur avait un dislike, on le retire d'abord.
-    // Cela permet de passer directement de Dislike -> Like en un clic.
-    if (avaitDislike) {
-      supprimerDislike.run(idPublication, idUtilisateur);
+    const avaitLike = Boolean(
+      chercherLike.get(idPublication, idUtilisateur)
+    );
+
+    // Si l'utilisateur avait un like, on le retire d'abord.
+    // Cela permet de passer directement de Like -> Dislike en un clic.
+    if (avaitLike) {
+      supprimerLike.run(idPublication, idUtilisateur);
     }
 
-    if (!avaitDejaLike) {
-      insererLike.run(idPublication, idUtilisateur);
+    if (!avaitDejaDislike) {
+      insererDislike.run(idPublication, idUtilisateur);
     }
 
     // On recalcule les deux compteurs dans la même transaction.
@@ -120,16 +120,16 @@ export function creerRoutesLikes(db) {
     const compteurs = lireCompteurs.get(idPublication);
 
     return {
-      modifie: !avaitDejaLike || avaitDislike,
-      basculeDepuisDislike: avaitDislike,
-      liked: true,
-      disliked: false,
+      modifie: !avaitDejaDislike || avaitLike,
+      basculeDepuisLike: avaitLike,
+      liked: false,
+      disliked: true,
       likes: compteurs.likes,
       dislikes: compteurs.dislikes
     };
   });
 
-  const enleverLike = db.transaction((idPublication, idUtilisateur) => {
+  const enleverDislike = db.transaction((idPublication, idUtilisateur) => {
     if (!chercherPublication.get(idPublication)) {
       return { erreur: 'PUBLICATION_INTROUVABLE' };
     }
@@ -138,21 +138,21 @@ export function creerRoutesLikes(db) {
       return { erreur: 'UTILISATEUR_INTROUVABLE' };
     }
 
-    const resultat = supprimerLike.run(idPublication, idUtilisateur);
-    synchroniserCompteurLikes.run(idPublication, idPublication);
+    const resultat = supprimerDislike.run(idPublication, idUtilisateur);
+    synchroniserCompteurDislikes.run(idPublication, idPublication);
 
     const compteurs = lireCompteurs.get(idPublication);
 
     return {
       modifie: resultat.changes > 0,
-      liked: false,
-      disliked: Boolean(chercherDislike.get(idPublication, idUtilisateur)),
+      liked: Boolean(chercherLike.get(idPublication, idUtilisateur)),
+      disliked: false,
       likes: compteurs.likes,
       dislikes: compteurs.dislikes
     };
   });
 
-  router.post('/:id/like', (req, res) => {
+  router.post('/:id/dislike', (req, res) => {
     const idPublication = convertirId(req.params.id);
     const idUtilisateur = obtenirIdUtilisateur(req);
 
@@ -165,7 +165,7 @@ export function creerRoutesLikes(db) {
     }
 
     try {
-      const resultat = ajouterLike(idPublication, idUtilisateur);
+      const resultat = ajouterDislike(idPublication, idUtilisateur);
 
       if (resultat.erreur === 'PUBLICATION_INTROUVABLE') {
         return res.status(404).json({ erreur: 'Publication introuvable' });
@@ -175,11 +175,11 @@ export function creerRoutesLikes(db) {
         return res.status(404).json({ erreur: 'Utilisateur introuvable' });
       }
 
-      let message = 'Publication déjà likée';
-      if (resultat.basculeDepuisDislike) {
-        message = 'Dislike retiré et like ajouté';
+      let message = 'Publication déjà dislikée';
+      if (resultat.basculeDepuisLike) {
+        message = 'Like retiré et dislike ajouté';
       } else if (resultat.modifie) {
-        message = 'Like ajouté';
+        message = 'Dislike ajouté';
       }
 
       return res.status(resultat.modifie ? 201 : 200).json({
@@ -192,12 +192,12 @@ export function creerRoutesLikes(db) {
         dislikes: resultat.dislikes
       });
     } catch (erreur) {
-      console.error('Erreur ajout like :', erreur);
+      console.error('Erreur ajout dislike :', erreur);
       return res.status(500).json({ erreur: 'Erreur interne du serveur' });
     }
   });
 
-  router.delete('/:id/like', (req, res) => {
+  router.delete('/:id/dislike', (req, res) => {
     const idPublication = convertirId(req.params.id);
     const idUtilisateur = obtenirIdUtilisateur(req);
 
@@ -210,7 +210,7 @@ export function creerRoutesLikes(db) {
     }
 
     try {
-      const resultat = enleverLike(idPublication, idUtilisateur);
+      const resultat = enleverDislike(idPublication, idUtilisateur);
 
       if (resultat.erreur === 'PUBLICATION_INTROUVABLE') {
         return res.status(404).json({ erreur: 'Publication introuvable' });
@@ -221,7 +221,9 @@ export function creerRoutesLikes(db) {
       }
 
       return res.status(200).json({
-        message: resultat.modifie ? 'Like retiré' : 'La publication n’était pas likée',
+        message: resultat.modifie
+          ? 'Dislike retiré'
+          : 'La publication n’était pas dislikée',
         publicationId: idPublication,
         utilisateurId: idUtilisateur,
         liked: resultat.liked,
@@ -230,7 +232,7 @@ export function creerRoutesLikes(db) {
         dislikes: resultat.dislikes
       });
     } catch (erreur) {
-      console.error('Erreur suppression like :', erreur);
+      console.error('Erreur suppression dislike :', erreur);
       return res.status(500).json({ erreur: 'Erreur interne du serveur' });
     }
   });
