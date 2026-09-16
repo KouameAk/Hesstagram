@@ -1,28 +1,24 @@
 import { Router } from 'express';
-// 1. On ajoute publierPhoto dans les imports du service
 import { publierVideo, publierPhoto, recupererVideos, ErreurPublication } from '../services/publication.service.js';
-// 2. On ajoute uploadPhoto dans les imports du middleware
 import { uploadVideo, uploadPhoto } from '../middlewares/upload.middleware.js';
 import { convertirVideoEnMp4 } from '../services/video.service.js';
+import { verifierToken } from '../middlewares/auth.middleware.js';
 
 export function creerRoutesPublication(db) {
   const router = Router();
 
-  // ==========================================
-  // ROUTE VIDÉO (Code de ton collègue)
-  // ==========================================
-  router.post('/video', uploadVideo.single('video'), async (req, res) => {
+  // Route vidéo — protégée par JWT, idUtilisateur extrait du token
+  router.post('/video', verifierToken, uploadVideo.single('video'), async (req, res) => {
     try {
-      const { idUtilisateur, description } = req.body;
-      
+      const idUtilisateur = req.user.id; // extrait du token JWT
+      const { description } = req.body;
+
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'Aucun fichier vidéo fourni.' });
       }
 
-      // Convertir la vidéo en MP4 et récupérer le nom du fichier final
       const nomFichierConverti = await convertirVideoEnMp4(req.file.path);
 
-      // Enregistrer en base de données avec le type vidéo standard
       const publication = await publierVideo(db, {
         idUtilisateur,
         description,
@@ -42,12 +38,11 @@ export function creerRoutesPublication(db) {
   });
 
 
-  // ==========================================
-  // ROUTE PHOTO (Ton code)
-  // ==========================================
-  router.post('/photo', uploadPhoto.single('photo'), async (req, res) => {
+  // Route photo — protégée par JWT, idUtilisateur extrait du token
+  router.post('/photo', verifierToken, uploadPhoto.single('photo'), async (req, res) => {
     try {
-      const { idUtilisateur, description } = req.body;
+      const idUtilisateur = req.user.id; // extrait du token JWT
+      const { description } = req.body;
       
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'Aucun fichier image fourni.' });

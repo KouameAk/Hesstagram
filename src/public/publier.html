@@ -100,7 +100,6 @@
   <!-- LE FORMULAIRE VIDÉO -->
   <div id="tab-video" class="tab-content active">
     <form id="form-video" enctype="multipart/form-data">
-      <input type="hidden" name="idUtilisateur" id="idUtilisateurVideo" value="1">
       
       <label>Fichier vidéo
         <input type="file" name="video" accept="video/*" required>
@@ -118,7 +117,6 @@
   <!-- LE FORMULAIRE PHOTO (TON TRAVAIL) -->
   <div id="tab-photo" class="tab-content">
     <form id="form-photo" enctype="multipart/form-data">
-      <input type="hidden" name="idUtilisateur" id="idUtilisateurPhoto" value="1">
       
       <label>Fichier image
         <input type="file" name="photo" accept="image/*" required>
@@ -134,23 +132,26 @@
   </div>
 
   <script>
-    // 1. GESTION DES ONGLETS (Ce qui bloquait !)
+    // Vérifier que l'utilisateur est connecté, sinon le renvoyer au login
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = 'index.html';
+    }
+
+    // Gestion des onglets
     const tabs = document.querySelectorAll('.tab');
     const tabContents = document.querySelectorAll('.tab-content');
 
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        // Retire l'état actif partout
         tabs.forEach(t => t.classList.remove('active'));
         tabContents.forEach(c => c.classList.remove('active'));
-        
-        // Active le bon onglet
         tab.classList.add('active');
         document.getElementById(tab.dataset.target).classList.add('active');
       });
     });
 
-    // 2. GESTION DU FORMULAIRE VIDÉO
+    // Envoi du formulaire vidéo avec le token JWT dans les headers
     const formVideo = document.getElementById('form-video');
     const msgVideo = document.getElementById('message-video');
 
@@ -160,27 +161,45 @@
       msgVideo.textContent = 'Envoi et conversion en cours... Veuillez patienter.';
       msgVideo.style.display = 'block';
 
+      const formData = new FormData(formVideo);
+
       try {
         const response = await fetch('/api/publications/video', {
           method: 'POST',
-          body: new FormData(formVideo)
+          headers: {
+            // On envoie le token JWT dans l'en-tête Authorization
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
         });
+
+        // Vérifier si la réponse est bien du JSON avant de la parser
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error(`Le serveur a renvoyé une erreur inattendue (statut ${response.status})`);
+        }
+
         const data = await response.json();
+
         if (response.ok) {
           msgVideo.className = 'message success';
           msgVideo.textContent = 'Vidéo publiée avec succès !';
           formVideo.reset();
+        } else if (response.status === 401) {
+          // Token expiré ou invalide
+          localStorage.removeItem('token');
+          window.location.href = 'index.html';
         } else {
           msgVideo.className = 'message error';
           msgVideo.textContent = data.message || 'Une erreur est survenue.';
         }
       } catch (err) {
         msgVideo.className = 'message error';
-        msgVideo.textContent = 'Erreur réseau : ' + err.message;
+        msgVideo.textContent = 'Erreur : ' + err.message;
       }
     });
 
-    // 3. GESTION DU FORMULAIRE PHOTO
+    // Envoi du formulaire photo avec le token JWT dans les headers
     const formPhoto = document.getElementById('form-photo');
     const msgPhoto = document.getElementById('message-photo');
 
@@ -190,23 +209,38 @@
       msgPhoto.textContent = 'Envoi de la photo en cours...';
       msgPhoto.style.display = 'block';
 
+      const formData = new FormData(formPhoto);
+
       try {
         const response = await fetch('/api/publications/photo', {
           method: 'POST',
-          body: new FormData(formPhoto)
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
         });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error(`Le serveur a renvoyé une erreur inattendue (statut ${response.status})`);
+        }
+
         const data = await response.json();
+
         if (response.ok) {
           msgPhoto.className = 'message success';
           msgPhoto.textContent = 'Photo publiée avec succès !';
           formPhoto.reset();
+        } else if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = 'index.html';
         } else {
           msgPhoto.className = 'message error';
           msgPhoto.textContent = data.message || 'Une erreur est survenue.';
         }
       } catch (err) {
         msgPhoto.className = 'message error';
-        msgPhoto.textContent = 'Erreur réseau : ' + err.message;
+        msgPhoto.textContent = 'Erreur : ' + err.message;
       }
     });
   </script>
