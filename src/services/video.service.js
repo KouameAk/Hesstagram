@@ -22,20 +22,27 @@ export function convertirVideoEnMp4(cheminSource) {
 
     ffmpeg(cheminSource)
       .output(cheminFinal)
-      .videoCodec('libx264') // Codec standard H.264
-      .audioCodec('aac')     // Codec audio standard
+      .videoCodec('libx264')
+      .audioCodec('aac')
+      .preset('veryfast') // Accélère la conversion
+      .outputOptions([
+        '-pix_fmt yuv420p',
+        '-movflags +faststart'
+      ])
       .format('mp4')
       .on('end', () => {
         // Supprimer le fichier temporaire original
         fs.unlink(cheminSource, (err) => {
-          if (err) console.error("Erreur lors de la suppression du fichier temporaire:", err);
+          if (err) console.error('Erreur lors de la suppression du fichier temporaire:', err);
         });
         resolve(nomFichierFinal);
       })
-      .on('error', (err) => {
-        // En cas d'erreur, essayer de nettoyer
+      .on('error', (err, stdout, stderr) => {
+        console.error('Erreur FFmpeg complète:', err.message);
+        if (stderr) console.error('FFmpeg stderr:', stderr);
+        // Supprimer le fichier temporaire
         fs.unlink(cheminSource, () => {});
-        reject(new Error(`Erreur lors de la conversion de la vidéo : ${err.message}`));
+        reject(new Error(`Échec de la conversion de la vidéo : ${err.message}`));
       })
       .run();
   });

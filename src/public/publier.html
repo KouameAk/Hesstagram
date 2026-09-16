@@ -173,25 +173,26 @@
           body: formData
         });
 
-        // Vérifier si la réponse est bien du JSON avant de la parser
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error(`Le serveur a renvoyé une erreur inattendue (statut ${response.status})`);
+        // Lire la réponse sous forme JSON ou texte
+        const contentType = response.headers.get('content-type') || '';
+        let data = {};
+        if (contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const rawText = await response.text();
+          data = { message: rawText || `Erreur HTTP ${response.status}` };
         }
 
-        const data = await response.json();
-
-        if (response.ok) {
+        if (response.ok && data.success) {
           msgVideo.className = 'message success';
           msgVideo.textContent = 'Vidéo publiée avec succès !';
           formVideo.reset();
         } else if (response.status === 401) {
-          // Token expiré ou invalide
           localStorage.removeItem('token');
           window.location.href = 'index.html';
         } else {
           msgVideo.className = 'message error';
-          msgVideo.textContent = data.message || 'Une erreur est survenue.';
+          msgVideo.textContent = data.message || 'Une erreur est survenue lors de la publication.';
         }
       } catch (err) {
         msgVideo.className = 'message error';
@@ -220,14 +221,16 @@
           body: formData
         });
 
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error(`Le serveur a renvoyé une erreur inattendue (statut ${response.status})`);
+        const contentType = response.headers.get('content-type') || '';
+        let data = {};
+        if (contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const rawText = await response.text();
+          data = { message: rawText || `Erreur HTTP ${response.status}` };
         }
 
-        const data = await response.json();
-
-        if (response.ok) {
+        if (response.ok && data.success) {
           msgPhoto.className = 'message success';
           msgPhoto.textContent = 'Photo publiée avec succès !';
           formPhoto.reset();
@@ -236,7 +239,7 @@
           window.location.href = 'index.html';
         } else {
           msgPhoto.className = 'message error';
-          msgPhoto.textContent = data.message || 'Une erreur est survenue.';
+          msgPhoto.textContent = data.message || 'Une erreur est survenue lors de la publication.';
         }
       } catch (err) {
         msgPhoto.className = 'message error';
