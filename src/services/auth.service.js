@@ -12,6 +12,8 @@ import jwt from 'jsonwebtoken';
 import * as utilisateurRepository from '../repositories/utilisateur.repository.js';
 import * as administrationRepository from '../repositories/administration.repository.js';
 import { journaliser } from './journal.service.js';
+import { supprimerMedia } from './medias.service.js';
+import { mediasDUnCompte } from '../repositories/fil.repository.js';
 import { NOM_MIN, NOM_MAX, MDP_MIN, MDP_MAX, MOTIF_NOM } from '../config.js';
 
 // Clé secrète utilisée pour signer les tokens de connexion.
@@ -160,9 +162,11 @@ export async function fermerCompte(db, req, mdp) {
     throw new ErreurAuth('Un administrateur ne peut pas fermer son propre compte.', 403);
   }
 
+  const medias = mediasDUnCompte(db, user.id);
   administrationRepository.supprimerCompte(db, user.id, (bilan) => {
     journaliser(db, req, 'compte_ferme', {
       details: `Fermé par l'utilisateur — ${bilan.publications} publication(s), ${bilan.messages} message(s)`
     });
   });
+  for (const media of medias) supprimerMedia(media.nom_fichier, media.type_fichier);
 }

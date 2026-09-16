@@ -4,16 +4,16 @@ import { uploadVideo, uploadPhoto } from '../middlewares/upload.middleware.js';
 import { convertirVideoEnMp4 } from '../services/video.service.js';
 import { verifierToken, creerCompteActif } from '../middlewares/auth.middleware.js';
 import { journaliser, extrait } from '../services/journal.service.js';
+import { enregistrerHashtags } from '../repositories/fil.repository.js';
 import { MEDIAS_ACTIFS } from '../config.js';
 
 export function creerRoutesPublication(db) {
   const router = Router();
   const connecte = [verifierToken, creerCompteActif(db)];
 
-  // Publication de photos et de vidéos : en pause pour le moment.
-  // Tout le code d'envoi, de conversion et d'enregistrement reste en place ;
-  // il suffit de remettre MEDIAS_ACTIFS à true dans src/config.js pour le réactiver
-  // (l'interface suit automatiquement, elle lit GET /api/config).
+  // Interrupteur unique pour la publication de médias (src/config.js).
+  // À false, l'API refuse l'envoi et l'interface grise les boutons : elle lit le
+  // même réglage via GET /api/config.
   const mediasAutorises = (req, res, next) => {
     if (!MEDIAS_ACTIFS) {
       return res.status(503).json({
@@ -24,8 +24,21 @@ export function creerRoutesPublication(db) {
     next();
   };
 
+  // Réception du fichier : les erreurs de multer (mauvais type, fichier trop lourd)
+  // sont renvoyées en JSON, comme le reste de l'API — sinon Express répond une page
+  // HTML que l'interface ne sait pas lire.
+  const recevoirFichier = (champ, televerseur) => (req, res, suite) => {
+    televerseur.single(champ)(req, res, (err) => {
+      if (!err) return suite();
+      const message = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Fichier trop lourd (10 Mo pour une photo, 50 Mo pour une vidéo).'
+        : err.message;
+      res.status(400).json({ success: false, message });
+    });
+  };
+
   // Route vidéo — protégée par JWT, idUtilisateur extrait du token
-  router.post('/video', connecte, mediasAutorises, uploadVideo.single('video'), async (req, res) => {
+  router.post('/video', connecte, mediasAutorises, recevoirFichier('video', uploadVideo), async (req, res) => {
     try {
       const idUtilisateur = req.user.id; // extrait du token JWT
       const { description } = req.body;
@@ -45,6 +58,9 @@ export function creerRoutesPublication(db) {
         typeFichier: 'video/mp4'
       });
 
+      // Les #hashtags de la légende alimentent la recherche et les tendances,
+      // exactement comme pour une publication texte.
+      enregistrerHashtags(db, publication.id, description ?? '');
       journaliser(db, req, 'publication_creee', {
         cible: { type: 'publication', id: publication.id, nom: req.user.nom },
         details: `[vidéo] ${extrait(description ?? '')}`
@@ -61,7 +77,7 @@ export function creerRoutesPublication(db) {
   });
 
   // Route photo — protégée par JWT, idUtilisateur extrait du token
-  router.post('/photo', connecte, mediasAutorises, uploadPhoto.single('photo'), async (req, res) => {
+  router.post('/photo', connecte, mediasAutorises, recevoirFichier('photo', uploadPhoto), async (req, res) => {
     try {
       const idUtilisateur = req.user.id; // extrait du token JWT
       const { description } = req.body;
@@ -78,6 +94,9 @@ export function creerRoutesPublication(db) {
         typeFichier: req.file.mimetype
       });
 
+      // Les #hashtags de la légende alimentent la recherche et les tendances,
+      // exactement comme pour une publication texte.
+      enregistrerHashtags(db, publication.id, description ?? '');
       journaliser(db, req, 'publication_creee', {
         cible: { type: 'publication', id: publication.id, nom: req.user.nom },
         details: `[photo] ${extrait(description ?? '')}`

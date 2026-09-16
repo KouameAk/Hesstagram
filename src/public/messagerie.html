@@ -256,24 +256,32 @@ async function chargerHistorique() {
   }
 }
 
-// ── WebSocket : réception en direct ──
+// ── WebSocket : réception en direct (protocole du serveur du groupe) ──
+// Le serveur envoie { type: 'message', de, contenu } au destinataire connecté, et
+// pousse l'historique de chaque conversation à la connexion. Les messages, eux,
+// sont toujours relus depuis la base : une seule source d'affichage, donc pas de
+// doublon ni de message affiché mais non enregistré.
+let tentativesReconnexion = 0;
+
 function ouvrirWebSocket() {
   const protocole = location.protocol === 'https:' ? 'wss' : 'ws';
   socket = new WebSocket(`${protocole}://${location.host}/?token=${encodeURIComponent(jetonDeSession())}`);
 
+  socket.onopen = () => {
+    tentativesReconnexion = 0;
+    // Rattrapage de ce qui a pu arriver pendant la coupure
+    if (contactActif) chargerHistorique().catch(() => {});
+    chargerContacts().catch(() => {});
+  };
+
   socket.onmessage = async (evenement) => {
-    const donnees = JSON.parse(evenement.data);
-    if (donnees.type !== 'message') return;              // l'historique passe par l'API REST
+    let donnees;
+    try { donnees = JSON.parse(evenement.data); } catch { return; }
+    if (donnees.type !== 'message') return;          // 'historique' et messages de groupe : ignorés ici
 
     const expediteur = Number(donnees.de);
-    if (contactActif && expediteur === contactActif.id && maCle) {
-      let texte = null;
-      try { texte = await dechiffrerMessage(donnees.contenu, maCle); } catch { texte = null; }
-      afficherMessage({ texte, date: new Date().toISOString(), deMoi: false, illisible: texte === null });
-      // Le message vient d'être lu : on le marque vu côté serveur
-      api(`/api/messagerie/conversation/${contactActif.id}?apres=${dernierId}`).then(nouveaux => {
-        for (const m of nouveaux) dernierId = Math.max(dernierId, m.id);
-      }).catch(() => {});
+    if (contactActif && expediteur === contactActif.id) {
+      await chargerHistorique();                     // affiche, déchiffre et marque comme lu
     } else {
       chargerContacts();
       majCompteurs();
@@ -281,11 +289,30 @@ function ouvrirWebSocket() {
     }
   };
 
-  // Reconnexion simple si la connexion tombe
-  socket.onclose = () => setTimeout(() => { if (document.visibilityState !== 'hidden') ouvrirWebSocket(); }, 4000);
+  // Reconnexion, en espaçant les tentatives ; au bout de 5 échecs on prévient.
+  socket.onclose = () => {
+    if (document.visibilityState === 'hidden') return;
+    if (++tentativesReconnexion > 5) {
+      toast('Messagerie hors ligne : rechargez la page', { type: 'erreur', duree: 6000 });
+      return;
+    }
+    setTimeout(ouvrirWebSocket, 2000 * tentativesReconnexion);
+  };
 }
 
 // ── Envoi ──
+// Le message voyage par WebSocket : il est en base quelques dizaines de
+// millisecondes plus tard. On relit jusqu'à le voir arriver (4 essais).
+async function attendreEnregistrement(essais = 4) {
+  for (let i = 0; i < essais; i++) {
+    await new Promise((suite) => setTimeout(suite, 120));
+    const avant = dernierId;
+    await chargerHistorique();
+    if (dernierId > avant) return true;
+  }
+  return false;
+}
+
 champ.oninput = () => { boutonEnvoi.disabled = !champ.value.trim(); };
 saisie.onsubmit = async e => {
   e.preventDefault();
@@ -302,9 +329,9 @@ saisie.onsubmit = async e => {
     socket.send(JSON.stringify({ type: 'message', versId: String(contactActif.id), contenu }));
     // Trace côté serveur (journal + notification du destinataire) ; jamais le contenu
     api('/api/messagerie/trace', { method: 'POST', body: { versId: contactActif.id } }).catch(() => {});
-    afficherMessage({ texte, date: new Date().toISOString(), deMoi: true });
-    const messages = await api(`/api/messagerie/conversation/${contactActif.id}?apres=${dernierId}`);
-    for (const m of messages) dernierId = Math.max(dernierId, m.id);
+    // Le WebSocket enregistre le message : on le relit depuis la base pour l'afficher
+    // avec son vrai horodatage — et on récupère au passage ce qui vient d'arriver.
+    await attendreEnregistrement();
   } catch (err) {
     champ.value = texte;                             // on ne perd pas le texte en cas d'échec
     toastErreur(err);

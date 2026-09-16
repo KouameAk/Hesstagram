@@ -102,7 +102,11 @@ export function notificationsPour(db, idUtilisateur) {
     .prepare(
       `SELECT j.id, j.date, j.action, j.details, j.id_utilisateur AS acteur_id, j.nom_utilisateur AS acteur,
               j.cible_type, j.cible_id,
-              CASE WHEN p.nom_fichier IS NOT NULL THEN '/uploads/' || p.nom_fichier END AS image,
+              CASE
+                WHEN p.nom_fichier IS NULL THEN NULL
+                WHEN p.type_fichier LIKE 'video/%' THEN '/uploads/videos/' || p.nom_fichier
+                ELSE '/uploads/temp/' || p.nom_fichier
+              END AS image,
               p.description
        FROM journal j
        LEFT JOIN publication p ON j.cible_type = 'publication' AND p.id = j.cible_id

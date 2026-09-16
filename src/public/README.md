@@ -14,7 +14,7 @@ navigateur, pages HTML. Rien de ce qui est ici ne tourne sur le serveur.
 | `profil.html` | Profil d'un compte : statistiques, abonnés, publications |
 | `messagerie.html` | Messagerie chiffrée de bout en bout (WebSocket + X25519) |
 | `parametres.html` | Mot de passe, clé de chiffrement, fermeture du compte |
-| `publier.html` | Création de publication — onglets Photo et Vidéo en place mais **désactivés** |
+| `publier.html` | Création de publication : texte, **photo** et **vidéo** (envoi de fichier vers les routes du groupe) |
 | `moderation.html` | Console de modération : file de signalements par compte |
 | `admin.html` | Console d'administration : tableau de bord, comptes, décisions, journal |
 

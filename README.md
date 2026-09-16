@@ -70,8 +70,8 @@ La base `data/hesstagram.sqlite` est créée au premier démarrage à partir du 
 `BDD.sqlite`, puis remplie avec les **comptes préconfigurés** et un petit jeu de
 démonstration (publications, commentaires, abonnements, signalements).
 `npm run seed` fait la même chose sans lancer le serveur, `npm test` exécute les
-**122 tests unitaires** (socle du groupe + interfaces intégrées : fil, profils,
-modération, administration, journal, comptes préconfigurés).
+**134 tests unitaires** (socle du groupe + interfaces intégrées : fil, profils,
+modération, administration, journal, médias, comptes préconfigurés).
 
 Pour repartir de zéro : supprimer le dossier `data/` et relancer.
 
@@ -116,7 +116,7 @@ latérale sur ordinateur et barre du bas avec bouton « + » sur mobile.
 | `profil.html` | Profil, statistiques, abonnés/abonnements, publications |
 | `messagerie.html` | Messages privés chiffrés de bout en bout |
 | `parametres.html` | Mot de passe, clé de chiffrement, fermeture du compte |
-| `publier.html` | Création de publication (onglets Photo et Vidéo présents mais désactivés) |
+| `publier.html` | Création de publication : texte, photo ou vidéo |
 
 ### Console de modération (`modo` et `admin`)
 
@@ -149,16 +149,27 @@ automatiquement le « je n'aime pas » posé dessus, et inversement : la bascule
 en un clic, dans une seule transaction. Les deux routes exigent un token et écrivent
 au journal, ce qui alimente les notifications de l'auteur.
 
-### Publication de photos et de vidéos — en pause
+### Publication de photos et de vidéos
 
-Comme convenu, l'envoi de médias est **désactivé** pour cette version : les boutons
-Photo et Vidéo restent visibles (grisés) et l'écran `publier.html` est en place, avec
-ses formulaires prêts à l'emploi (`POST /api/publications/photo` et `/video`, protégés
-par JWT, l'auteur venant du token).
+L'envoi de médias utilise les modules du groupe, à leur emplacement d'origine :
 
-Rien n'a été retiré du code d'envoi, de filtrage des fichiers (multer) ni de conversion
-MP4 (ffmpeg) : il suffit de remettre `MEDIAS_ACTIFS` à `true` dans `src/config.js` pour
-tout réactiver — interface et API en même temps, via `GET /api/config`.
+| Étape | Fichier |
+|---|---|
+| Réception du fichier (type et taille) | `src/middlewares/upload.middleware.js` — photo 10 Mo, vidéo 50 Mo |
+| Conversion en MP4 | `src/services/video.service.js` (ffmpeg) |
+| Enregistrement en base | `src/services/publication.service.js` |
+| Endpoints | `POST /api/publications/photo` et `/video` (`publication.routes.js`), protégés par JWT : l'auteur vient du token |
+
+Depuis l'écran **Créer une publication**, chaque onglet envoie son fichier en
+`multipart/form-data`. Les fichiers sont rangés là où le groupe les met —
+`src/public/uploads/temp/` pour les photos, `src/public/uploads/videos/` pour les
+vidéos converties — et le fil construit l'URL correspondante (`medias.service.js`).
+Les `#hashtags` de la légende comptent comme pour une publication texte, et le fichier
+est effacé du disque quand la publication ou le compte est supprimé.
+
+Un seul réglage commande le tout : `MEDIAS_ACTIFS` dans `src/config.js`. À `false`,
+l'API refuse l'envoi et l'interface grise les boutons — elle lit le même réglage via
+`GET /api/config`.
 
 ### Messagerie chiffrée
 
@@ -168,6 +179,12 @@ par message, transport par **WebSocket**. La clé privée reste dans le navigate
 la clé publique est enregistrée (`utilisateur.cle_publique`). La base ne contient que
 `iv` / `ciphertext`, et le journal ne garde que « qui a écrit à qui », jamais le contenu.
 L'écran affiche l'empreinte des clés, à comparer de vive voix.
+
+L'affichage a une seule source : la base. Le WebSocket sert de signal (« un message
+est arrivé »), puis la conversation est relue via `GET /api/messagerie/conversation/:id`
+— pas de doublon, pas de message affiché mais non enregistré. À l'envoi, on attend que
+le serveur ait bien enregistré le message avant de l'afficher, et la reconnexion
+rattrape automatiquement ce qui est arrivé pendant une coupure.
 
 ### Traçabilité
 

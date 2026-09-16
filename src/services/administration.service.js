@@ -12,6 +12,8 @@ import * as journalRepository from '../repositories/journal.repository.js';
 import { trouverParId, definirRole } from '../repositories/utilisateur.repository.js';
 import { ErreurMetier } from './erreurs.js';
 import { journaliser, cibleCompte } from './journal.service.js';
+import { supprimerMedia } from './medias.service.js';
+import { mediasDUnCompte } from '../repositories/fil.repository.js';
 import { ROLES } from '../config.js';
 
 /**
@@ -73,6 +75,7 @@ export function supprimerCompte(db, req, id, raison) {
   const texte = String(raison ?? '').trim();
   if (!texte) throw new ErreurMetier('La raison de la suppression est obligatoire.');
   const cible = cibleAdministrable(db, req, id);
+  const medias = mediasDUnCompte(db, cible.id);   // relevé avant la suppression en base
 
   try {
     administrationRepository.supprimerCompte(db, cible.id, (bilan) => {
@@ -86,6 +89,9 @@ export function supprimerCompte(db, req, id, raison) {
     console.error(err);
     throw new ErreurMetier('La suppression a échoué, rien n’a été modifié.', 500);
   }
+
+  // La base est à jour : on peut retirer les photos et vidéos du disque.
+  for (const media of medias) supprimerMedia(media.nom_fichier, media.type_fichier);
 }
 
 // ── Tableau de bord ──────────────────────────────────────────

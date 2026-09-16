@@ -31,7 +31,8 @@ function creerCompte(db, { nom, mdp, role }, date) {
   return Number(info.lastInsertRowid);
 }
 
-export function installerDonneesInitiales(db, { avecDemonstration = true } = {}) {
+export function installerDonneesInitiales(db, { avecDemonstration = true, silencieux = false } = {}) {
+  const annoncer = (message) => { if (!silencieux) console.log(message); };
   const { total } = db.prepare('SELECT COUNT(*) AS total FROM utilisateur').get();
 
   // Base déjà remplie : on vérifie seulement qu'un administrateur existe.
@@ -45,7 +46,7 @@ export function installerDonneesInitiales(db, { avecDemonstration = true } = {})
       } else {
         creerCompte(db, compte, new Date().toISOString());
       }
-      console.log(`Aucun administrateur en base : le compte « ${compte.nom} » a été rétabli.`);
+      annoncer(`Aucun administrateur en base : le compte « ${compte.nom} » a été rétabli.`);
     }
     filRepository.rattraperHashtags(db);
     return { cree: false };
@@ -63,7 +64,7 @@ export function installerDonneesInitiales(db, { avecDemonstration = true } = {})
     installerDemonstration(db, ids, maintenant);
   }
 
-  console.log('Comptes préconfigurés créés (voir le README pour les identifiants).');
+  annoncer('Comptes préconfigurés créés (voir le README pour les identifiants).');
   return { cree: true, comptes: COMPTES_PRECONFIGURES.map(({ nom, role }) => ({ nom, role })) };
 }
 

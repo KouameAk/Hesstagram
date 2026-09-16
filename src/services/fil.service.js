@@ -9,6 +9,7 @@
 import * as filRepository from '../repositories/fil.repository.js';
 import { ErreurMetier } from './erreurs.js';
 import { journaliser, extrait, ciblePublication } from './journal.service.js';
+import { supprimerMedia } from './medias.service.js';
 import { MEDIAS_ACTIFS } from '../config.js';
 
 const LONGUEUR_PUBLICATION = 2200;
@@ -21,9 +22,13 @@ export function lireFil(db, moi, filtres) {
 export function publier(db, req, { description, media }) {
   const texte = String(description ?? '').trim();
 
-  // Photos et vidéos en pause : l'interface garde les boutons, l'API refuse.
-  if (media && !MEDIAS_ACTIFS) {
-    throw new ErreurMetier('La publication de photos et de vidéos est désactivée pour le moment.', 503);
+  // Cette route ne reçoit que du texte (JSON). Les photos et les vidéos passent par
+  // les routes du groupe, qui reçoivent un vrai fichier :
+  // POST /api/publications/photo et POST /api/publications/video.
+  if (media) {
+    throw MEDIAS_ACTIFS
+      ? new ErreurMetier('Les photos et les vidéos s’envoient en fichier, depuis l’écran « Créer une publication ».', 400)
+      : new ErreurMetier('La publication de photos et de vidéos est désactivée pour le moment.', 503);
   }
   if (!texte) throw new ErreurMetier('Écrivez un message avant de publier.');
   if (texte.length > LONGUEUR_PUBLICATION) {
@@ -48,6 +53,7 @@ export function supprimer(db, req, idPublication) {
   if (!parAuteur && !estStaff) throw new ErreurMetier('Vous ne pouvez pas supprimer cette publication.', 403);
 
   filRepository.supprimerPublication(db, publication.id);
+  supprimerMedia(publication.nom_fichier, publication.type_fichier);   // photo ou vidéo sur le disque
 
   if (parAuteur) {
     journaliser(db, req, 'publication_supprimee', {

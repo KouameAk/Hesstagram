@@ -7,10 +7,11 @@
  * ------------------------------------------------------------
  */
 
-// Publication de photos et de vidéos : mise en pause pour l'instant.
-// L'interface garde les boutons (grisés) et la page publier.html ;
-// l'API refuse l'envoi tant que ce réglage vaut false.
-export const MEDIAS_ACTIFS = false;
+// Publication de photos et de vidéos (routes du groupe : publication.routes.js,
+// upload.middleware.js et video.service.js). Passer ce réglage à false remet la
+// fonctionnalité en pause : les boutons restent affichés mais grisés, et l'API
+// refuse l'envoi.
+export const MEDIAS_ACTIFS = true;
 
 // Règles de compte (appliquées côté serveur ET affichées côté navigateur)
 export const NOM_MIN = 3;

@@ -47,6 +47,8 @@ import { listerJournal } from './src/repositories/journal.repository.js';
 import { ErreurMetier } from './src/services/erreurs.js';
 import { installerDonneesInitiales, COMPTES_PRECONFIGURES } from './src/bdd/donnees-initiales.js';
 import { MDP_MIN, MDP_MAX, MEDIAS_ACTIFS, ROLES } from './src/config.js';
+import { urlMedia, cheminMedia } from './src/services/medias.service.js';
+import { publierPhoto } from './src/services/publication.service.js';
 
 
 // ============================================================
@@ -616,8 +618,8 @@ describe('config.js - règles communes', () => {
     assert.equal(MDP_MAX, 64);
   });
 
-  it('la publication de médias est désactivée dans cette version', () => {
-    assert.equal(MEDIAS_ACTIFS, false);
+  it('la publication de médias tient à un seul réglage', () => {
+    assert.equal(typeof MEDIAS_ACTIFS, 'boolean');
   });
 
   it('les trois rôles du projet sont user, modo et admin', () => {
@@ -794,11 +796,12 @@ describe('fil.service.js - publications', () => {
     assert.throws(() => filService.publier(db, requeteDe(alice), { description: 'a'.repeat(2201) }), ErreurMetier);
   });
 
-  it('publier() refuse un média tant que la fonctionnalité est désactivée', () => {
+  it('publier() refuse un média en JSON : photos et vidéos passent par l’envoi de fichier', () => {
     assert.throws(
       () => filService.publier(db, requeteDe(alice), { description: 'photo', media: 'data:image/png;base64,AAAA' }),
-      (err) => err instanceof ErreurMetier && err.statut === 503,
+      (err) => err instanceof ErreurMetier && [400, 503].includes(err.statut),
     );
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM publication').get().n, 0);
   });
 
   it('publier() enregistre les #hashtags, une seule fois chacun', () => {
@@ -1318,7 +1321,7 @@ describe('donnees-initiales.js - comptes livrés avec le projet', () => {
   });
 
   it('crée les comptes préconfigurés avec leurs rôles', () => {
-    const resultat = installerDonneesInitiales(db);
+    const resultat = installerDonneesInitiales(db, { silencieux: true });
 
     assert.equal(resultat.cree, true);
     for (const compte of COMPTES_PRECONFIGURES) {
@@ -1330,7 +1333,7 @@ describe('donnees-initiales.js - comptes livrés avec le projet', () => {
   });
 
   it('les mots de passe livrés respectent la règle des 12 caractères et sont hashés', () => {
-    installerDonneesInitiales(db);
+    installerDonneesInitiales(db, { silencieux: true });
 
     for (const compte of COMPTES_PRECONFIGURES) {
       assert.ok(compte.mdp.length >= MDP_MIN, `${compte.nom} : mot de passe trop court`);
@@ -1342,10 +1345,10 @@ describe('donnees-initiales.js - comptes livrés avec le projet', () => {
   });
 
   it('ne recrée rien si la base contient déjà des comptes', () => {
-    installerDonneesInitiales(db);
+    installerDonneesInitiales(db, { silencieux: true });
     const avant = utilisateurRepository.listerUtilisateurs(db).length;
 
-    const resultat = installerDonneesInitiales(db);
+    const resultat = installerDonneesInitiales(db, { silencieux: true });
 
     assert.equal(resultat.cree, false);
     assert.equal(utilisateurRepository.listerUtilisateurs(db).length, avant);
@@ -1353,18 +1356,116 @@ describe('donnees-initiales.js - comptes livrés avec le projet', () => {
 
   it('rétablit l’administrateur s’il n’y en a plus aucun', () => {
     creerCompteTest(db, 'quelquun');                   // base non vide, mais sans admin
-    installerDonneesInitiales(db);
+    installerDonneesInitiales(db, { silencieux: true });
 
     const admin = db.prepare("SELECT nom FROM utilisateur WHERE role = 'admin'").get();
     assert.equal(admin.nom, 'admin');
   });
 
   it('le jeu de démonstration remplit le fil et la file de modération', () => {
-    installerDonneesInitiales(db);
+    installerDonneesInitiales(db, { silencieux: true });
 
     assert.ok(db.prepare('SELECT COUNT(*) AS n FROM publication').get().n >= 3);
     assert.ok(db.prepare('SELECT COUNT(*) AS n FROM commentaire').get().n >= 2);
     assert.ok(db.prepare('SELECT COUNT(*) AS n FROM signalement').get().n >= 1);
     assert.ok(filRepository.tendances(db).length >= 1);
+  });
+});
+
+
+// ============================================================
+//  MÉDIAS - Photos et vidéos (modules du groupe)
+// ============================================================
+describe('medias.service.js - emplacement des fichiers', () => {
+  it('une photo est servie depuis le dossier des envois', () => {
+    assert.equal(urlMedia('123-photo.jpg', 'image/jpeg'), '/uploads/temp/123-photo.jpg');
+  });
+
+  it('une vidéo est servie depuis le dossier des vidéos converties', () => {
+    assert.equal(urlMedia('123-converti.mp4', 'video/mp4'), '/uploads/videos/123-converti.mp4');
+  });
+
+  it('une publication sans fichier n’a pas d’URL', () => {
+    assert.equal(urlMedia(null, 'texte'), null);
+    assert.equal(cheminMedia(null, 'texte'), null);
+  });
+
+  it('le chemin sur le disque suit le type du fichier', () => {
+    assert.match(cheminMedia('a.mp4', 'video/mp4'), /public\/uploads\/videos\/a\.mp4$/);
+    assert.match(cheminMedia('a.jpg', 'image/jpeg'), /public\/uploads\/temp\/a\.jpg$/);
+  });
+
+  it('un nom de fichier piégé ne sort pas du dossier prévu', () => {
+    assert.match(cheminMedia('../../server.js', 'image/jpeg'), /public\/uploads\/temp\/server\.js$/);
+  });
+});
+
+
+describe('publication.service.js - photos', () => {
+  let db;
+  let alice;
+  beforeEach(() => {
+    db = ouvrirBase(':memory:');
+    alice = creerCompteTest(db, 'alice');
+  });
+
+  it('publierPhoto() refuse sans fichier', async () => {
+    await assert.rejects(
+      () => publierPhoto(db, { idUtilisateur: alice.id, description: 'Sans image', typeFichier: 'image/jpeg' }),
+      ErreurPublication,
+    );
+  });
+
+  it('publierPhoto() refuse un type de fichier qui n’est pas une image', async () => {
+    await assert.rejects(
+      () => publierPhoto(db, { idUtilisateur: alice.id, nomFichier: 'a.mp4', typeFichier: 'video/mp4' }),
+      ErreurPublication,
+    );
+  });
+
+  it('publierPhoto() refuse un utilisateur inconnu', async () => {
+    await assert.rejects(
+      () => publierPhoto(db, { idUtilisateur: 999, nomFichier: 'a.jpg', typeFichier: 'image/jpeg' }),
+      ErreurPublication,
+    );
+  });
+
+  it('publierPhoto() enregistre la publication avec son fichier', async () => {
+    const publication = await publierPhoto(db, {
+      idUtilisateur: alice.id,
+      description: 'Coucher de soleil #vosges',
+      nomFichier: '123-photo.jpg',
+      typeFichier: 'image/jpeg',
+    });
+
+    assert.equal(publication.nom_fichier, '123-photo.jpg');
+    assert.equal(publication.type_fichier, 'image/jpeg');
+  });
+
+  it('le fil renvoie l’URL du média, prête à afficher', async () => {
+    await publierPhoto(db, { idUtilisateur: alice.id, description: 'Photo', nomFichier: 'p.jpg', typeFichier: 'image/jpeg' });
+    await publierVideo(db, { idUtilisateur: alice.id, description: 'Vidéo', nomFichier: 'v.mp4', typeFichier: 'video/mp4' });
+
+    const fil = filRepository.listerPublications(db, alice.id, {});
+    const photo = fil.find((p) => p.type_fichier === 'image/jpeg');
+    const video = fil.find((p) => p.type_fichier === 'video/mp4');
+
+    assert.equal(photo.media, '/uploads/temp/p.jpg');
+    assert.equal(video.media, '/uploads/videos/v.mp4');
+  });
+
+  it('une publication texte n’a pas de média', () => {
+    filService.publier(db, requeteDe(alice), { description: 'Juste du texte' });
+    const [publication] = filRepository.listerPublications(db, alice.id, {});
+    assert.equal(publication.media, null);
+  });
+
+  it('mediasDUnCompte() liste les fichiers à effacer avec le compte', async () => {
+    await publierPhoto(db, { idUtilisateur: alice.id, description: '', nomFichier: 'p.jpg', typeFichier: 'image/jpeg' });
+    filService.publier(db, requeteDe(alice), { description: 'Texte sans fichier' });
+
+    const medias = filRepository.mediasDUnCompte(db, alice.id);
+    assert.equal(medias.length, 1);
+    assert.equal(medias[0].nom_fichier, 'p.jpg');
   });
 });

@@ -28,7 +28,11 @@ export function listerPublications(db, moi, { filtre, tag, auteur, id } = {}) {
   const publications = db
     .prepare(
       `SELECT p.id, p.date, p.description, p.type_fichier,
-              CASE WHEN p.nom_fichier IS NOT NULL THEN '/uploads/' || p.nom_fichier END AS media,
+              CASE
+                WHEN p.nom_fichier IS NULL THEN NULL
+                WHEN p.type_fichier LIKE 'video/%' THEN '/uploads/videos/' || p.nom_fichier
+                ELSE '/uploads/temp/' || p.nom_fichier
+              END AS media,
               u.id AS auteur_id, u.nom AS auteur, u.role AS auteur_role,
               (SELECT COUNT(*) FROM "like" l WHERE l.id_pub = p.id) AS nb_like,
               (SELECT COUNT(*) FROM dislike d WHERE d.id_pub = p.id) AS nb_dislike,
@@ -68,7 +72,7 @@ export function creerPublication(db, { idUtilisateur, description, nomFichier = 
 export function trouverPublicationAvecAuteur(db, id) {
   return db
     .prepare(
-      `SELECT p.id, p.description, p.nom_fichier, u.id AS auteur_id, u.nom AS auteur
+      `SELECT p.id, p.description, p.nom_fichier, p.type_fichier, u.id AS auteur_id, u.nom AS auteur
        FROM publication p JOIN utilisateur u ON u.id = p.id_utilisateur WHERE p.id = ?`,
     )
     .get(id);
@@ -93,11 +97,23 @@ export function publicationsDUnCompte(db, idUtilisateur) {
   return db
     .prepare(
       `SELECT p.id, p.date, p.description, p.type_fichier,
-              CASE WHEN p.nom_fichier IS NOT NULL THEN '/uploads/' || p.nom_fichier END AS media,
+              CASE
+                WHEN p.nom_fichier IS NULL THEN NULL
+                WHEN p.type_fichier LIKE 'video/%' THEN '/uploads/videos/' || p.nom_fichier
+                ELSE '/uploads/temp/' || p.nom_fichier
+              END AS media,
               (SELECT COUNT(*) FROM "like" l WHERE l.id_pub = p.id) AS nb_like,
               (SELECT COUNT(*) FROM commentaire c WHERE c.id_pub = p.id) AS nb_commentaires
        FROM publication p WHERE p.id_utilisateur = ? ORDER BY p.date DESC, p.id DESC`,
     )
+    .all(idUtilisateur);
+}
+
+// Fichiers (photos, vidéos) publiés par un compte : sert à les effacer du disque
+// quand le compte est supprimé.
+export function mediasDUnCompte(db, idUtilisateur) {
+  return db
+    .prepare('SELECT nom_fichier, type_fichier FROM publication WHERE id_utilisateur = ? AND nom_fichier IS NOT NULL')
     .all(idUtilisateur);
 }
 
