@@ -1,248 +1,223 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Publier - Hesstagram</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Créer une publication · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
 <style>
-  body {
-    font-family: system-ui, sans-serif;
-    max-width: 500px;
-    margin: 40px auto;
-    padding: 0 16px;
-    color: #222;
+  .zone-depot {
+    border: 2px dashed var(--line-2); border-radius: var(--r-lg); padding: 36px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--muted);
   }
-  .tabs {
-    display: flex;
-    border-bottom: 2px solid #ddd;
-    margin-bottom: 20px;
-  }
-  .tab {
-    padding: 10px 20px;
-    cursor: pointer;
-    background: none;
-    border: none;
-    font-size: 1rem;
-    font-weight: bold;
-    color: #666;
-  }
-  .tab.active {
-    color: #000;
-    border-bottom: 2px solid #000;
-    margin-bottom: -2px;
-  }
-  .tab-content {
-    display: none;
-  }
-  .tab-content.active {
-    display: block;
-  }
-  label {
-    display: block;
-    margin-top: 15px;
-    font-size: 0.9rem;
-    font-weight: bold;
-  }
-  input, textarea {
-    width: 100%;
-    padding: 8px;
-    margin-top: 6px;
-    box-sizing: border-box;
-  }
-  button[type="submit"] {
-    margin-top: 20px;
-    padding: 10px 20px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-  }
-  button[type="submit"]:hover {
-    background: #0056b3;
-  }
-  .message {
-    margin-top: 20px;
-    padding: 10px;
-    border-radius: 4px;
-    display: none;
-  }
-  .message.success {
-    background: #d4edda;
-    color: #155724;
-    display: block;
-  }
-  .message.error {
-    background: #f8d7da;
-    color: #721c24;
-    display: block;
-  }
-  .back-link {
-    display: inline-block;
-    margin-bottom: 20px;
-    text-decoration: none;
-    color: #007bff;
-  }
+  .zone-depot .illu { width: 72px; height: 72px; border-radius: 24px; background: var(--bg); color: var(--faint); display: grid; place-items: center; }
+  .zone-depot .illu .icone { width: 32px; height: 32px; }
+  .zone-depot.pret { border-color: var(--o-300); background: var(--o-50); }
+  .desactive { opacity: .55; pointer-events: none; filter: grayscale(.3); }
+  .options-media { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 16px; }
+  .option-media { background: var(--bg); border-radius: var(--r-md); padding: 14px; font-size: 13.5px; color: var(--ink-2); display: flex; align-items: center; gap: 10px; }
+  .option-media .icone { color: var(--o-500); }
+  .champ-fichier { display: none; }
 </style>
 </head>
 <body>
-  <a href="accueil.html" class="back-link">&larr; Retour à l'accueil</a>
-  
-  <h1>Nouvelle publication</h1>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <a class="btn btn-icon" href="/accueil.html" aria-label="Retour au fil" id="retour"></a>
+      <h1>Créer une publication</h1>
+      <div class="actions" data-actions-entete></div>
+    </header>
 
-  <!-- LES BOUTONS DES ONGLETS -->
-  <div class="tabs">
-    <button class="tab active" data-target="tab-video">Vidéo</button>
-    <button class="tab" data-target="tab-photo">Photo</button>
-  </div>
+    <div class="page" style="max-width:760px">
+      <div class="segmented" role="tablist" style="margin-bottom:18px">
+        <button class="active" data-onglet="texte" role="tab">Texte</button>
+        <button data-onglet="photo" role="tab">Photo</button>
+        <button data-onglet="video" role="tab">Vidéo</button>
+      </div>
 
-  <!-- LE FORMULAIRE VIDÉO -->
-  <div id="tab-video" class="tab-content active">
-    <form id="form-video" enctype="multipart/form-data">
-      
-      <label>Fichier vidéo
-        <input type="file" name="video" accept="video/*" required>
-      </label>
-      
-      <label>Description
-        <textarea name="description" rows="4" placeholder="Écrivez une description..."></textarea>
-      </label>
+      <!-- Texte -->
+      <section class="card card-pad" data-panneau="texte">
+        <div class="composeur">
+          <span id="mon-avatar"></span>
+          <div class="zone">
+            <div style="font-weight:500" id="mon-nom"></div>
+            <textarea id="texte" rows="6" maxlength="2200" placeholder="Quoi de neuf ? Ajoutez des #hashtags pour être trouvé."></textarea>
+            <div class="outils">
+              <button class="btn btn-soft btn-sm" data-vers="photo"></button>
+              <button class="btn btn-soft btn-sm" data-vers="video"></button>
+              <span class="compteur" id="compteur" style="margin-left:auto">0 / 2200</span>
+              <button class="btn btn-primary" id="publier" disabled>Publier</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <button type="submit">Publier la vidéo</button>
-    </form>
-    <div id="message-video" class="message"></div>
-  </div>
+      <!-- Photo -->
+      <section data-panneau="photo" hidden>
+        <div class="alerte alerte-info" data-avis-media style="margin-bottom:16px">
+          <span data-ic="info"></span>
+          <span>La publication de photos est <b>désactivée pour le moment</b>. L’écran est en place : il s’activera avec le réglage <code>MEDIAS_ACTIFS</code>.</span>
+        </div>
+        <form class="card card-pad" id="form-photo" data-media>
+          <div class="zone-depot" data-depot="photo">
+            <div class="illu"><span data-ic="image"></span></div>
+            <h3 style="color:var(--ink)" data-titre>Choisissez une photo</h3>
+            <p>JPEG, PNG, GIF ou WebP · 10 Mo maximum</p>
+            <input class="champ-fichier" type="file" name="photo" accept="image/*" data-fichier>
+            <button class="btn btn-primary" type="button" data-choisir>Parcourir…</button>
+          </div>
+          <div class="field" style="margin-top:16px">
+            <label for="legende-photo">Légende</label>
+            <textarea class="input" id="legende-photo" name="description" rows="3" maxlength="2200" placeholder="Écrivez une légende, avec des #hashtags si vous voulez."></textarea>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px">
+            <button class="btn btn-primary" type="submit">Publier la photo</button>
+          </div>
+          <div class="options-media">
+            <div class="option-media"><span data-ic="image"></span>Recadrage et filtres</div>
+            <div class="option-media"><span data-ic="globe"></span>Visibilité de la publication</div>
+            <div class="option-media"><span data-ic="diese"></span>Hashtags et légende</div>
+          </div>
+        </form>
+      </section>
 
-  <!-- LE FORMULAIRE PHOTO (TON TRAVAIL) -->
-  <div id="tab-photo" class="tab-content">
-    <form id="form-photo" enctype="multipart/form-data">
-      
-      <label>Fichier image
-        <input type="file" name="photo" accept="image/*" required>
-      </label>
-      
-      <label>Description
-        <textarea name="description" rows="4" placeholder="Écrivez une légende..."></textarea>
-      </label>
+      <!-- Vidéo -->
+      <section data-panneau="video" hidden>
+        <div class="alerte alerte-info" data-avis-media style="margin-bottom:16px">
+          <span data-ic="info"></span>
+          <span>La publication de vidéos est <b>désactivée pour le moment</b>. Le téléversement et la conversion en MP4 existent déjà côté serveur.</span>
+        </div>
+        <form class="card card-pad" id="form-video" data-media>
+          <div class="zone-depot" data-depot="video">
+            <div class="illu"><span data-ic="camera"></span></div>
+            <h3 style="color:var(--ink)" data-titre>Choisissez une vidéo</h3>
+            <p>MP4, MOV ou WebM · 50 Mo maximum · conversion automatique en MP4</p>
+            <input class="champ-fichier" type="file" name="video" accept="video/*" data-fichier>
+            <button class="btn btn-primary" type="button" data-choisir>Parcourir…</button>
+          </div>
+          <div class="field" style="margin-top:16px">
+            <label for="legende-video">Description</label>
+            <textarea class="input" id="legende-video" name="description" rows="3" maxlength="2200" placeholder="De quoi parle cette vidéo ?"></textarea>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:14px">
+            <button class="btn btn-primary" type="submit">Publier la vidéo</button>
+          </div>
+          <div class="options-media">
+            <div class="option-media"><span data-ic="camera"></span>Conversion MP4 (ffmpeg)</div>
+            <div class="option-media"><span data-ic="horloge"></span>Vignette et durée</div>
+            <div class="option-media"><span data-ic="diese"></span>Hashtags et description</div>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+</div>
 
-      <button type="submit">Publier la photo</button>
-    </form>
-    <div id="message-photo" class="message"></div>
-  </div>
+<script src="/app.js"></script>
+<script>
+// Envoi d'un média : multipart/form-data + token JWT (routes du groupe
+// POST /api/publications/photo et /video). Actif seulement si le serveur
+// autorise les médias (GET /api/config → mediasActifs).
+async function envoyerMedia(form, url, champ) {
+  const fichier = form.querySelector('[data-fichier]').files[0];
+  if (!fichier) { toast('Choisissez d’abord un fichier', { type: 'erreur' }); return; }
 
-  <script>
-    // Vérifier que l'utilisateur est connecté, sinon le renvoyer au login
-    const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.href = 'index.html';
-    }
+  const donnees = new FormData();
+  donnees.append(champ, fichier);
+  donnees.append('description', form.querySelector('textarea').value.trim());
 
-    // Gestion des onglets
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(tab.dataset.target).classList.add('active');
-      });
+  const bouton = form.querySelector('[type="submit"]');
+  const libelle = bouton.textContent;
+  bouton.disabled = true;
+  bouton.textContent = 'Envoi…';
+  try {
+    const reponse = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jetonDeSession()}` },
+      body: donnees                                   // pas de Content-Type : le navigateur le pose
     });
+    const data = await reponse.json().catch(() => ({}));
+    if (!reponse.ok) throw new Error(data.message || data.error || `Erreur ${reponse.status}`);
+    toast('Publication partagée');
+    location.href = '/accueil.html';
+  } catch (err) {
+    toastErreur(err);
+    bouton.disabled = false;
+    bouton.textContent = libelle;
+  }
+}
 
-    // Envoi du formulaire vidéo avec le token JWT dans les headers
-    const formVideo = document.getElementById('form-video');
-    const msgVideo = document.getElementById('message-video');
+(async () => {
+  await demarrerApp('accueil');
+  document.querySelectorAll('[data-ic]').forEach(s => { s.outerHTML = icone(s.dataset.ic); });
+  document.getElementById('retour').innerHTML = icone('retour');
+  document.getElementById('mon-avatar').outerHTML = avatar(MOI.nom, 46);
+  document.getElementById('mon-nom').textContent = MOI.nom;
 
-    formVideo.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      msgVideo.className = 'message';
-      msgVideo.textContent = 'Envoi et conversion en cours... Veuillez patienter.';
-      msgVideo.style.display = 'block';
+  const versPhoto = document.querySelector('[data-vers="photo"]');
+  const versVideo = document.querySelector('[data-vers="video"]');
+  versPhoto.innerHTML = `${icone('image', 'icone-sm')}Photo`;
+  versVideo.innerHTML = `${icone('camera', 'icone-sm')}Vidéo`;
 
-      const formData = new FormData(formVideo);
+  // Onglets
+  const ouvrirOnglet = nom => {
+    document.querySelectorAll('[data-onglet]').forEach(x => x.classList.toggle('active', x.dataset.onglet === nom));
+    document.querySelectorAll('[data-panneau]').forEach(p => { p.hidden = p.dataset.panneau !== nom; });
+  };
+  document.querySelectorAll('[data-onglet]').forEach(b => { b.onclick = () => ouvrirOnglet(b.dataset.onglet); });
+  // Arrivée depuis le composeur : /publier.html#photo ou #video
+  const demande = location.hash.slice(1);
+  if (['texte', 'photo', 'video'].includes(demande)) ouvrirOnglet(demande);
 
-      try {
-        const response = await fetch('/api/publications/video', {
-          method: 'POST',
-          headers: {
-            // On envoie le token JWT dans l'en-tête Authorization
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
+  // Médias : actifs ou non, selon le réglage du serveur
+  const { mediasActifs } = await api('/api/config').catch(() => ({ mediasActifs: false }));
+  document.querySelectorAll('[data-avis-media]').forEach(a => { a.hidden = mediasActifs; });
+  document.querySelectorAll('[data-media]').forEach(f => f.classList.toggle('desactive', !mediasActifs));
+  [versPhoto, versVideo].forEach(b => {
+    b.disabled = !mediasActifs;
+    b.title = mediasActifs ? '' : 'Bientôt disponible';
+    b.onclick = () => ouvrirOnglet(b.dataset.vers);
+  });
 
-        // Vérifier si la réponse est bien du JSON avant de la parser
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error(`Le serveur a renvoyé une erreur inattendue (statut ${response.status})`);
-        }
+  // Choix du fichier + aperçu du nom
+  document.querySelectorAll('[data-media]').forEach(form => {
+    const champ = form.querySelector('[data-fichier]');
+    form.querySelector('[data-choisir]').onclick = () => champ.click();
+    champ.onchange = () => {
+      const fichier = champ.files[0];
+      form.querySelector('[data-depot]').classList.toggle('pret', Boolean(fichier));
+      form.querySelector('[data-titre]').textContent = fichier ? fichier.name : form.id === 'form-photo' ? 'Choisissez une photo' : 'Choisissez une vidéo';
+    };
+  });
+  document.getElementById('form-photo').onsubmit = e => {
+    e.preventDefault();
+    envoyerMedia(e.target, '/api/publications/photo', 'photo');
+  };
+  document.getElementById('form-video').onsubmit = e => {
+    e.preventDefault();
+    envoyerMedia(e.target, '/api/publications/video', 'video');
+  };
 
-        const data = await response.json();
-
-        if (response.ok) {
-          msgVideo.className = 'message success';
-          msgVideo.textContent = 'Vidéo publiée avec succès !';
-          formVideo.reset();
-        } else if (response.status === 401) {
-          // Token expiré ou invalide
-          localStorage.removeItem('token');
-          window.location.href = 'index.html';
-        } else {
-          msgVideo.className = 'message error';
-          msgVideo.textContent = data.message || 'Une erreur est survenue.';
-        }
-      } catch (err) {
-        msgVideo.className = 'message error';
-        msgVideo.textContent = 'Erreur : ' + err.message;
-      }
-    });
-
-    // Envoi du formulaire photo avec le token JWT dans les headers
-    const formPhoto = document.getElementById('form-photo');
-    const msgPhoto = document.getElementById('message-photo');
-
-    formPhoto.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      msgPhoto.className = 'message';
-      msgPhoto.textContent = 'Envoi de la photo en cours...';
-      msgPhoto.style.display = 'block';
-
-      const formData = new FormData(formPhoto);
-
-      try {
-        const response = await fetch('/api/publications/photo', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error(`Le serveur a renvoyé une erreur inattendue (statut ${response.status})`);
-        }
-
-        const data = await response.json();
-
-        if (response.ok) {
-          msgPhoto.className = 'message success';
-          msgPhoto.textContent = 'Photo publiée avec succès !';
-          formPhoto.reset();
-        } else if (response.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = 'index.html';
-        } else {
-          msgPhoto.className = 'message error';
-          msgPhoto.textContent = data.message || 'Une erreur est survenue.';
-        }
-      } catch (err) {
-        msgPhoto.className = 'message error';
-        msgPhoto.textContent = 'Erreur : ' + err.message;
-      }
-    });
-  </script>
+  // Publication texte (toujours active)
+  const texte = document.getElementById('texte');
+  const publier = document.getElementById('publier');
+  const maj = () => {
+    document.getElementById('compteur').textContent = `${texte.value.length} / 2200`;
+    publier.disabled = !texte.value.trim();
+  };
+  texte.oninput = maj;
+  texte.focus();
+  publier.onclick = async () => {
+    publier.disabled = true;
+    try {
+      await api('/api/publications', { method: 'POST', body: { description: texte.value.trim() } });
+      toast('Publication partagée');
+      location.href = '/accueil.html';
+    } catch (err) { toastErreur(err); maj(); }
+  };
+})();
+</script>
 </body>
 </html>

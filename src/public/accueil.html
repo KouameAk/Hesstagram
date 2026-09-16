@@ -1,61 +1,128 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Accueil - Hesstagram</title>
-<style>
-  body {
-    font-family: system-ui, sans-serif;
-    max-width: 420px;
-    margin: 60px auto;
-    padding: 0 16px;
-    text-align: center;
-    color: #222;
-  }
-  button {
-    margin-top: 20px;
-    padding: 8px 14px;
-    cursor: pointer;
-  }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Accueil · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h1>Bienvenue, <span id="nom-utilisateur"></span></h1>
-  <p>Page vide pour l'instant, le contenu (fil, profil...) viendra dans une prochaine étape.</p>
-  <a href="publier.html"><button>Créer une publication</button></a>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <h1>Accueil</h1>
+      <div class="actions" data-actions-entete></div>
+    </header>
 
-  <p><a href="messagerie.html">Messagerie</a></p>
-  <p id="lien-admin" hidden><a href="admin.html">Administration</a></p>
+    <div class="page colonnes">
+      <div class="fil">
+        <!-- Membres façon « stories » -->
+        <div class="stories" id="stories" aria-label="Membres"></div>
 
-  <button id="btn-logout">Se déconnecter</button>
+        <!-- Composeur rapide : ouvre la fenêtre de publication -->
+        <div class="card card-pad" style="display:flex;align-items:center;gap:12px">
+          <span id="mon-avatar"></span>
+          <button class="input ellipsis" id="ouvrir-composeur" style="text-align:left;color:var(--faint);cursor:text;border-radius:999px;min-width:0">Quoi de neuf ?</button>
+          <button class="btn btn-icon" data-creer aria-label="Ajouter une photo" style="color:var(--o-500)"></button>
+        </div>
 
-  <script src="token.js"></script>
-  <script>
-    // Récupère ce qui a été stocké par index.html lors de la connexion.
-    // S'il n'y a rien, personne n'est connecté : retour à la page de login.
-    const token = localStorage.getItem('token');
-    const nom = localStorage.getItem('nom');
+        <div class="chips" role="tablist">
+          <button class="chip active" data-filtre="" role="tab">Pour vous</button>
+          <button class="chip" data-filtre="abonnements" role="tab">Abonnements</button>
+        </div>
 
-    if (!token) {
-      window.location.href = 'index.html';
-    } else {
-      document.getElementById('nom-utilisateur').textContent = nom;
-    }
+        <div class="fil" id="fil"></div>
+      </div>
 
-    // Le lien admin n'apparaît que pour les comptes admin.
-    if (utilisateurConnecte()?.role === 'admin') {
-      document.getElementById('lien-admin').hidden = false;
-    }
+      <aside class="rail">
+        <div class="card card-pad">
+          <div class="card-titre"><h3>Suggestions</h3><a class="lien-voir" href="/explorer.html">Voir tout</a></div>
+          <div id="suggestions"></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-titre"><h3>Tendances</h3><a class="lien-voir" href="/explorer.html">Explorer</a></div>
+          <div id="tendances"></div>
+        </div>
+        <p class="muted" style="font-size:12.5px;padding:0 8px">Hesstagram · projet étudiant · messages chiffrés de bout en bout</p>
+      </aside>
+    </div>
+  </main>
+</div>
 
-    // Déconnexion : on efface les infos stockées et on revient au login.
-    // (le token JWT lui-même reste valable côté serveur jusqu'à
-    // expiration, on ne fait qu'oublier qu'on l'a côté navigateur)
-    document.getElementById('btn-logout').addEventListener('click', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('nom');
-      window.location.href = 'index.html';
-    });
-  </script>
+<script src="/app.js"></script>
+<script src="/publications.js"></script>
+<script>
+let filtre = '';
+
+const VIDES = {
+  '': `<div class="illu">${icone('image')}</div><h3>Le fil est encore vide</h3><p>Soyez le premier à partager quelque chose avec la communauté.</p>
+       <button class="btn btn-primary" data-creer-vide>${icone('plus')}Publier</button>`,
+  abonnements: `<div class="illu">${icone('suivre')}</div><h3>Aucune publication de vos abonnements</h3><p>Suivez des membres pour voir leurs publications ici.</p>
+       <a class="btn btn-dark" href="/explorer.html">${icone('recherche')}Trouver des membres</a>`
+};
+
+async function chargerAccueil() {
+  await chargerFil(document.getElementById('fil'), `/api/publications${filtre ? `?filtre=${filtre}` : ''}`, { vide: VIDES[filtre] });
+  document.querySelector('[data-creer-vide]')?.addEventListener('click', ouvrirComposeur);
+}
+
+async function chargerStories() {
+  const comptes = await api('/api/comptes');
+  const zone = document.getElementById('stories');
+  zone.innerHTML = `
+    <button class="story" data-creer style="border:none;background:none;padding:0">
+      <span class="ajout">${avatar(MOI.nom, 64, { anneau: true, pointille: true })}<span class="plus">${icone('plus')}</span></span>
+      <span>Publier</span>
+    </button>`;
+  zone.querySelector('[data-creer]').onclick = ouvrirComposeur;
+  for (const c of comptes.filter(c => c.id !== MOI.id)) {
+    const a = document.createElement('a');
+    a.className = 'story';
+    a.href = `/profil.html?id=${c.id}`;
+    a.innerHTML = `${avatar(c.nom, 64, { anneau: true, inactif: !c.nb_publications })}<span class="ellipsis"></span>`;
+    a.querySelector('span.ellipsis').textContent = c.nom;
+    zone.appendChild(a);
+  }
+}
+
+async function chargerRail() {
+  const [suggestions, tendances] = await Promise.all([api('/api/suggestions'), api('/api/tendances')]);
+  const zoneS = document.getElementById('suggestions');
+  zoneS.innerHTML = suggestions.length ? '' : '<p class="muted" style="font-size:14px">Vous suivez déjà tout le monde.</p>';
+  for (const s of suggestions) zoneS.appendChild(ligneCompte(s, { sous: pluriel(s.nb_abonnes, 'abonné') }));
+
+  document.getElementById('tendances').innerHTML = tendances.length
+    ? tendances.slice(0, 5).map(t => `
+        <a class="tendance" href="/explorer.html?tag=${encodeURIComponent(t.nom.slice(1))}">
+          <span class="tag">${escapeHtml(t.nom)}</span><span class="nb">${pluriel(t.total, 'publication')}</span>
+        </a>`).join('')
+    : '<p class="muted" style="font-size:14px">Les hashtags les plus utilisés apparaîtront ici.</p>';
+}
+
+(async () => {
+  await demarrerApp('accueil');
+  document.getElementById('mon-avatar').innerHTML = avatar(MOI.nom, 44);
+  document.getElementById('ouvrir-composeur').textContent = `Quoi de neuf, ${MOI.nom} ?`;
+  document.getElementById('ouvrir-composeur').onclick = ouvrirComposeur;
+  document.querySelector('.card [data-creer]').innerHTML = icone('image');
+
+  document.querySelectorAll('[data-filtre]').forEach(b => {
+    b.onclick = () => {
+      filtre = b.dataset.filtre;
+      document.querySelectorAll('[data-filtre]').forEach(x => {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-selected', x === b);
+      });
+      chargerAccueil();
+    };
+  });
+  document.addEventListener('publication:creee', () => { chargerAccueil(); chargerRail(); chargerStories(); });
+
+  chargerStories();
+  chargerRail();
+  chargerAccueil();
+})();
+</script>
 </body>
 </html>

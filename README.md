@@ -39,6 +39,9 @@ Le projet exploite les mécanismes fondamentaux d'une plateforme sociale : publi
 
 ## Table des matières
 
+- [Lancer l'application](#-lancer-lapplication)
+- [Comptes préconfigurés](#-comptes-préconfigurés)
+- [Interface et fonctionnalités livrées](#-interface-et-fonctionnalités-livrées)
 - [Fonctionnalités](#-fonctionnalités)
 - [Pile technique](#-pile-technique)
 - [Architecture](#-architecture)
@@ -56,7 +59,131 @@ Le projet exploite les mécanismes fondamentaux d'une plateforme sociale : publi
 
 ---
 
+## 🚀 Lancer l'application
+
+```bash
+npm install
+npm start           # http://localhost:3000
+```
+
+La base `data/hesstagram.sqlite` est créée au premier démarrage à partir du schéma
+`BDD.sqlite`, puis remplie avec les **comptes préconfigurés** et un petit jeu de
+démonstration (publications, commentaires, abonnements, signalements).
+`npm run seed` fait la même chose sans lancer le serveur, `npm test` exécute les
+**122 tests unitaires** (socle du groupe + interfaces intégrées : fil, profils,
+modération, administration, journal, comptes préconfigurés).
+
+Pour repartir de zéro : supprimer le dossier `data/` et relancer.
+
+---
+
+## 🔑 Comptes préconfigurés
+
+| Nom d'utilisateur | Mot de passe | Rôle | Arrive sur |
+|---|---|---|---|
+| `admin` | `AdminHess2026!` | `admin` | Console d'administration |
+| `moderateur` | `ModoHess2026!` | `modo` | File de signalements |
+| `lea.wagner` | `LeaHess2026!` | `user` | Fil d'actualité |
+| `luca.c` | `LucaHess2026!` | `user` | Fil d'actualité |
+| `tom.mercier` | `TomHess2026!` | `user` | Fil d'actualité |
+| `sarah.b` | `SarahHess2026!` | `user` | Fil d'actualité |
+
+La page de connexion propose ces comptes en un clic. Ils sont définis dans
+`src/bdd/donnees-initiales.js` ; si la base existe déjà mais n'a plus aucun
+administrateur, le compte `admin` est rétabli au démarrage.
+
+**Inscription libre** : nom de 3 à 20 caractères, mot de passe de **12 caractères
+minimum** et 64 maximum (limite haute comme sur les sites professionnels : au-delà,
+bcrypt ignorerait la fin du mot de passe). Les règles sont dans `src/config.js`,
+appliquées par `auth.service.js` et affichées en direct par la page de connexion.
+
+---
+
+## 🖥️ Interface et fonctionnalités livrées
+
+Interface complète en HTML/CSS/JS (aucun framework), servie depuis `src/public/`.
+Design : logo du projet, police Kanit, formes arrondies, accent orange ; barre
+latérale sur ordinateur et barre du bas avec bouton « + » sur mobile.
+
+### Côté membre
+
+| Page | Ce qu'on y fait |
+|---|---|
+| `index.html` | Se connecter ou créer un compte |
+| `accueil.html` | Fil « Pour vous » / « Abonnements », publier un texte, j'aime, commenter, signaler |
+| `explorer.html` | Chercher des membres et des #hashtags, voir les tendances |
+| `notifications.html` | J'aime, commentaires, nouveaux abonnés, messages, décisions de l'équipe |
+| `profil.html` | Profil, statistiques, abonnés/abonnements, publications |
+| `messagerie.html` | Messages privés chiffrés de bout en bout |
+| `parametres.html` | Mot de passe, clé de chiffrement, fermeture du compte |
+| `publier.html` | Création de publication (onglets Photo et Vidéo présents mais désactivés) |
+
+### Console de modération (`modo` et `admin`)
+
+Signalements **regroupés par compte visé** : motifs, auteurs, ancienneté, accès aux
+publications du compte, retrait d'une publication (l'auteur est notifié), puis
+clôture du dossier avec une décision (sans suite, contenu retiré, avertissement…).
+
+### Console d'administration (`admin`)
+
+| Vue | Contenu |
+|---|---|
+| Vue d'ensemble | Chiffres clés, activité sur 14 jours, comptes à surveiller, événements sensibles |
+| Comptes & rôles | Tableau triable et filtrable, export CSV, **fiche latérale** par compte |
+| Fiche → Aperçu | Informations, dernière connexion, échecs de connexion, chiffres, actions par catégorie |
+| Fiche → Activité | Chronologie horodatée de ce que le compte a fait ou subi |
+| Fiche → Gérer | Rôle Membre / Modérateur, suspension (durée + motif), levée, suppression définitive |
+| Suivi des décisions | Signalements déposés, dossiers clôturés, publications retirées |
+| Journal du site | Toutes les actions horodatées à la seconde, avec le compte et l'IP, export CSV |
+
+Règles appliquées **côté serveur** (`administration.service.js`) : un administrateur
+ne peut agir ni sur son propre compte ni sur un autre administrateur ; une suspension
+déconnecte immédiatement et bloque la connexion avec sa raison ; une suppression efface
+le compte et tout son contenu en une transaction.
+
+### Réactions
+
+`POST` / `DELETE` sur `/api/publications/:id/like` et `/api/publications/:id/dislike`
+(routes `likes.routes.js` et `dislikes.routes.js`). Aimer une publication retire
+automatiquement le « je n'aime pas » posé dessus, et inversement : la bascule se fait
+en un clic, dans une seule transaction. Les deux routes exigent un token et écrivent
+au journal, ce qui alimente les notifications de l'auteur.
+
+### Publication de photos et de vidéos — en pause
+
+Comme convenu, l'envoi de médias est **désactivé** pour cette version : les boutons
+Photo et Vidéo restent visibles (grisés) et l'écran `publier.html` est en place, avec
+ses formulaires prêts à l'emploi (`POST /api/publications/photo` et `/video`, protégés
+par JWT, l'auteur venant du token).
+
+Rien n'a été retiré du code d'envoi, de filtrage des fichiers (multer) ni de conversion
+MP4 (ffmpeg) : il suffit de remettre `MEDIAS_ACTIFS` à `true` dans `src/config.js` pour
+tout réactiver — interface et API en même temps, via `GET /api/config`.
+
+### Messagerie chiffrée
+
+Reprise du chiffrement du projet (`crypto/chiffrement.js` et
+`public/chiffrement-navigateur.js`) : échange de clés **X25519** puis **AES-256-GCM**
+par message, transport par **WebSocket**. La clé privée reste dans le navigateur, seule
+la clé publique est enregistrée (`utilisateur.cle_publique`). La base ne contient que
+`iv` / `ciphertext`, et le journal ne garde que « qui a écrit à qui », jamais le contenu.
+L'écran affiche l'empreinte des clés, à comparer de vive voix.
+
+### Traçabilité
+
+Deux tables ont été ajoutées au schéma `BDD.sqlite` :
+
+- `suspension` — raison, date de début et de fin (la colonne `utilisateur.banni`
+  reste synchronisée pour les écrans existants) ;
+- `journal` — sans clé étrangère, le nom et le rôle de l'auteur y sont recopiés pour
+  que la trace survive à la suppression du compte. Elle alimente les logs, l'audit
+  par profil **et** les notifications des membres (aucune table supplémentaire).
+
+---
+
 ## Fonctionnalités
+
+> Le tableau ci-dessous décrit la cible du projet ; la section précédente liste ce qui est effectivement livré dans cette version.
 
 ### Socle (Must Have)
 

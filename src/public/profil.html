@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Profil · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <button class="btn btn-icon" onclick="history.length > 1 ? history.back() : location.href='/'" aria-label="Retour" id="retour"></button>
+      <h1 id="titre" class="ellipsis">Profil</h1>
+      <div class="actions" data-actions-entete></div>
+    </header>
+
+    <div class="page" style="max-width:860px">
+      <section class="profil-entete" id="entete-profil">
+        <div class="profil-bandeau"></div>
+        <div class="profil-corps">
+          <div class="skeleton" style="height:120px;margin-top:20px"></div>
+        </div>
+      </section>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:26px 0 14px;gap:12px">
+        <div class="segmented" role="tablist">
+          <button class="active" data-vue="grille" role="tab" aria-label="Vue grille"></button>
+          <button data-vue="liste" role="tab" aria-label="Vue liste"></button>
+        </div>
+        <span class="muted" id="nb-pubs"></span>
+      </div>
+
+      <div id="grille" class="grille-posts"></div>
+      <div id="liste" class="fil" hidden></div>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script src="/publications.js"></script>
+<script>
+const idProfil = Number(new URLSearchParams(location.search).get('id'));
+let profil;
+let pubs = [];
+
+function statBouton(valeur, libelle, type) {
+  return type
+    ? `<button class="stat" data-relations="${type}"><b>${valeur}</b><span>${libelle}</span></button>`
+    : `<div class="stat"><b>${valeur}</b><span>${libelle}</span></div>`;
+}
+
+function rendreEntete() {
+  const moi = profil.id === MOI.id;
+  const corps = document.querySelector('.profil-corps');
+  corps.innerHTML = `
+    <div class="profil-haut">
+      ${avatar(profil.nom, 112, { anneau: true })}
+      <div class="actions" id="actions-profil"></div>
+    </div>
+    <div class="profil-nom"><span></span>${estStaff(profil.role) ? icone('verifie', 'verifie icone-lg') : ''}${badgeStatut(profil.role, { discret: true })}</div>
+    <div class="profil-meta">
+      <span>@<span data-pseudo></span></span>
+      <span style="display:inline-flex;align-items:center;gap:6px">${icone('calendrier', 'icone-sm')}Membre depuis ${new Date(profil.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</span>
+      ${profil.me_suit && !moi ? `<span class="statut statut-user">Vous suit</span>` : ''}
+    </div>
+    <div class="stats">
+      ${statBouton(profil.nb_publications, profil.nb_publications > 1 ? 'Publications' : 'Publication')}
+      ${statBouton(profil.nb_abonnes, profil.nb_abonnes > 1 ? 'Abonnés' : 'Abonné', 'abonnes')}
+      ${statBouton(profil.nb_abonnements, profil.nb_abonnements > 1 ? 'Abonnements' : 'Abonnement', 'abonnements')}
+      ${statBouton(profil.nb_likes_recus, 'J’aime reçus')}
+    </div>`;
+  corps.querySelector('.profil-nom > span').textContent = profil.nom;
+  corps.querySelector('[data-pseudo]').textContent = profil.nom;
+
+  const actions = corps.querySelector('#actions-profil');
+  if (moi) {
+    actions.innerHTML = `
+      <button class="btn btn-primary" data-creer>${icone('plus', 'icone-sm')}Publier</button>
+      <a class="btn" href="/parametres.html">${icone('reglages', 'icone-sm')}Paramètres</a>`;
+    actions.querySelector('[data-creer]').onclick = ouvrirComposeur;
+  } else {
+    const suivre = boutonSuivre(profil, {
+      taille: '',
+      onChange: abonne => { profil.nb_abonnes += abonne ? 1 : -1; rendreEntete(); }
+    });
+    if (!profil.je_suis_abonne) suivre.classList.add('btn-primary');
+    actions.appendChild(suivre);
+    actions.insertAdjacentHTML('beforeend', `
+      <a class="btn" href="/messages.html?avec=${profil.id}">${icone('messages', 'icone-sm')}Message</a>
+      <button class="btn btn-icon" style="border:1.5px solid var(--line-2)" data-plus aria-label="Plus d’options">${icone('plus_options')}</button>`);
+    actions.querySelector('[data-plus]').onclick = e => ouvrirMenu(e.currentTarget, [
+      { libelle: 'Copier le lien du profil', icone: 'lien', action: () => navigator.clipboard?.writeText(location.href).then(() => toast('Lien copié')) },
+      '-',
+      { libelle: `Signaler ${profil.nom}`, icone: 'drapeau', danger: true, action: () => signalerCompte(profil) },
+      ...(MOI.role === 'admin' ? [{ libelle: 'Ouvrir dans la console admin', icone: 'tableau', action: () => { location.href = `/admin.html#comptes-${profil.id}`; } }] : [])
+    ]);
+  }
+  corps.querySelectorAll('[data-relations]').forEach(b => { b.onclick = () => ouvrirRelations(b.dataset.relations); });
+}
+
+async function ouvrirRelations(type) {
+  const titre = type === 'abonnes' ? `Abonnés de ${profil.nom}` : `Abonnements de ${profil.nom}`;
+  const m = ouvrirModal({ titre, largeur: 460, corps: '<div data-liste><div class="skeleton" style="height:50px"></div></div>' });
+  const liste = await api(`/api/profils/${profil.id}/relations?type=${type}`);
+  const zone = m.$('[data-liste]');
+  zone.innerHTML = liste.length ? '' : `<div class="vide"><div class="illu">${icone('comptes')}</div><p>${type === 'abonnes' ? 'Aucun abonné pour le moment.' : 'Ce compte ne suit personne.'}</p></div>`;
+  for (const c of liste) zone.appendChild(ligneCompte(c, { sous: pluriel(c.nb_abonnes, 'abonné') }));
+}
+
+function rendrePublications() {
+  document.getElementById('nb-pubs').textContent = pluriel(pubs.length, 'publication');
+  const grille = document.getElementById('grille');
+  const liste = document.getElementById('liste');
+  grille.innerHTML = '';
+  liste.innerHTML = '';
+
+  if (!pubs.length) {
+    const moi = profil.id === MOI.id;
+    grille.style.display = 'block';
+    grille.innerHTML = `<div class="card vide"><div class="illu">${icone('image')}</div>
+      <h3>${moi ? 'Partagez votre première publication' : 'Aucune publication'}</h3>
+      <p>${moi ? 'Vos photos et vos textes apparaîtront ici.' : `${escapeHtml(profil.nom)} n’a encore rien publié.`}</p>
+      ${moi ? `<button class="btn btn-primary" data-creer-vide>${icone('plus')}Publier</button>` : ''}</div>`;
+    grille.querySelector('[data-creer-vide]')?.addEventListener('click', ouvrirComposeur);
+    return;
+  }
+  grille.style.display = '';
+  for (const p of pubs) {
+    const tuile = document.createElement('button');
+    tuile.className = 'tuile-post';
+    tuile.innerHTML = `
+      ${p.media ? (String(p.type_fichier || '').startsWith('video/') ? `<video src="${p.media}" muted></video>` : `<img src="${p.media}" alt="" loading="lazy">`) : '<span class="texte"></span>'}
+      <span class="survol"><span>${icone('coeur', 'icone-sm')}${p.nb_like}</span><span>${icone('commentaire', 'icone-sm')}${p.nb_commentaires}</span></span>`;
+    const t = tuile.querySelector('.texte');
+    if (t) t.textContent = p.description;
+    tuile.onclick = () => { changerVue('liste'); document.getElementById(`pub-${p.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+    grille.appendChild(tuile);
+    liste.appendChild(cartePublication(p, { onSupprime: () => { pubs = pubs.filter(x => x.id !== p.id); profil.nb_publications--; rendreEntete(); rendrePublications(); } }));
+  }
+}
+
+function changerVue(vue) {
+  document.querySelectorAll('[data-vue]').forEach(b => b.classList.toggle('active', b.dataset.vue === vue));
+  document.getElementById('grille').hidden = vue !== 'grille';
+  document.getElementById('liste').hidden = vue !== 'liste';
+}
+
+async function charger() {
+  try {
+    [profil, pubs] = await Promise.all([api(`/api/profils/${idProfil}`), api(`/api/publications?auteur=${idProfil}`)]);
+  } catch (err) {
+    document.querySelector('.profil-corps').innerHTML = `<div class="vide"><div class="illu">${icone('profil')}</div><h3>Profil introuvable</h3><p></p><a class="btn btn-dark" href="/explorer.html">Explorer les membres</a></div>`;
+    document.querySelector('.profil-corps p').textContent = err.message;
+    return;
+  }
+  document.title = `${profil.nom} · Hesstagram`;
+  document.getElementById('titre').textContent = profil.id === MOI.id ? 'Mon profil' : profil.nom;
+  rendreEntete();
+  rendrePublications();
+  if (location.hash.startsWith('#pub-')) {
+    changerVue('liste');
+    document.querySelector(location.hash)?.scrollIntoView({ block: 'center' });
+  }
+}
+
+(async () => {
+  await demarrerApp('profil');
+  if (!idProfil) { location.replace(`/profil.html?id=${MOI.id}`); return; }
+  if (idProfil !== MOI.id) document.querySelectorAll('.nav-item.active, .bottom-nav a.active').forEach(a => a.classList.remove('active'));
+  document.getElementById('retour').innerHTML = icone('retour');
+  document.querySelector('[data-vue="grille"]').innerHTML = `${icone('tableau', 'icone-sm')}Grille`;
+  document.querySelector('[data-vue="liste"]').innerHTML = `${icone('filtre', 'icone-sm')}Fil`;
+  document.querySelectorAll('[data-vue]').forEach(b => { b.onclick = () => changerVue(b.dataset.vue); });
+  document.addEventListener('publication:creee', () => { if (idProfil === MOI.id) charger(); });
+  charger();
+})();
+</script>
+</body>
+</html>

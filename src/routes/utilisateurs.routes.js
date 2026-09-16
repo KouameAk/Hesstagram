@@ -1,24 +1,24 @@
 import { Router } from 'express';
-import { listerUtilisateurs, definirRole } from '../repositories/utilisateur.repository.js';
-import { verifierToken, estAdmin } from '../middlewares/auth.middleware.js';
-
-const ROLES_VALIDES = ['user', 'modo', 'admin'];
+import { listerUtilisateurs } from '../repositories/utilisateur.repository.js';
+import { changerRole } from '../services/administration.service.js';
+import { repondreErreur } from '../services/erreurs.js';
+import { verifierToken, estAdmin, creerCompteActif } from '../middlewares/auth.middleware.js';
 
 // Seul un admin peut changer les rôles des autres utilisateurs.
+// (le changement passe par administration.service : mêmes protections et
+// même trace au journal que depuis la console)
 export function creerRoutesUtilisateurs(db) {
   const router = Router();
+  const admin = [verifierToken, creerCompteActif(db), estAdmin];
 
-  router.get('/utilisateurs', verifierToken, estAdmin, (req, res) => {
+  router.get('/utilisateurs', admin, (req, res) => {
     res.json(listerUtilisateurs(db));
   });
 
-  router.post('/utilisateurs/:id/role', verifierToken, estAdmin, (req, res) => {
-    const { role } = req.body;
-    if (!ROLES_VALIDES.includes(role)) {
-      return res.status(400).json({ error: `Rôle invalide, attendu : ${ROLES_VALIDES.join(', ')}` });
-    }
-    definirRole(db, Number(req.params.id), role);
-    res.json({ id: Number(req.params.id), role });
+  router.post('/utilisateurs/:id/role', admin, (req, res) => {
+    try {
+      res.json(changerRole(db, req, req.params.id, req.body?.role));
+    } catch (err) { repondreErreur(res, err); }
   });
 
   return router;

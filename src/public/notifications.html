@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Notifications · Hesstagram</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <h1>Notifications</h1>
+      <div class="actions" data-actions-entete></div>
+    </header>
+
+    <div class="page" style="max-width:720px">
+      <div class="chips" style="margin-bottom:18px">
+        <button class="chip active" data-type="">Toutes</button>
+        <button class="chip" data-type="like_ajoute">J’aime</button>
+        <button class="chip" data-type="commentaire_ajoute">Commentaires</button>
+        <button class="chip" data-type="abonnement_ajoute">Abonnés</button>
+        <button class="chip" data-type="message_envoye">Messages</button>
+      </div>
+      <div class="card card-pad" id="liste" style="padding:22px 24px"></div>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+let notifs = [];
+let type = '';
+let vuesAvant = 0;
+
+// Présentation de chaque type : icône, phrase, destination
+const TYPES = {
+  like_ajoute:        { ic: 'coeur',       txt: 'a aimé votre publication',              lien: n => `/profil.html?id=${MOI.id}#pub-${n.cible_id}` },
+  commentaire_ajoute: { ic: 'commentaire', txt: 'a commenté votre publication',          lien: n => `/profil.html?id=${MOI.id}#pub-${n.cible_id}` },
+  abonnement_ajoute:  { ic: 'suivre',      txt: 'a commencé à vous suivre',              lien: n => `/profil.html?id=${n.acteur_id}` },
+  message_envoye:     { ic: 'cadenas',     txt: 'vous a envoyé un message chiffré',      lien: n => `/messages.html?avec=${n.acteur_id}`, dark: true },
+  role_modifie:       { ic: 'bouclier',    txt: 'a modifié votre statut',                lien: () => '/parametres.html', dark: true },
+  publication_moderee:{ ic: 'alerte',      txt: 'a retiré une de vos publications',      lien: () => '/parametres.html', dark: true }
+};
+
+function groupe(iso) {
+  const d = new Date(iso);
+  const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
+  const jours = Math.floor((aujourdhui - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  if (jours <= 0) return 'Aujourd’hui';
+  if (jours === 1) return 'Hier';
+  if (jours < 7) return 'Cette semaine';
+  return 'Plus tôt';
+}
+
+function detailNotif(n) {
+  if (n.action === 'commentaire_ajoute' && n.details) return `« ${n.details} »`;
+  if (n.action === 'role_modifie') {
+    const [, role] = (n.details || '').split('→').map(s => s.trim());
+    return role ? `Vous êtes maintenant ${statutInfo(role).label.toLowerCase()}.` : '';
+  }
+  if (n.action === 'publication_moderee') return n.details || '';
+  return '';
+}
+
+function afficher() {
+  const zone = document.getElementById('liste');
+  const liste = notifs.filter(n => !type || n.action === type);
+  if (!liste.length) {
+    zone.innerHTML = `<div class="vide"><div class="illu">${icone('cloche')}</div><h3>Rien de nouveau</h3><p>Les j’aime, commentaires, nouveaux abonnés et messages apparaîtront ici.</p></div>`;
+    return;
+  }
+  zone.innerHTML = '';
+  let groupeCourant = null;
+  for (const n of liste) {
+    const t = TYPES[n.action];
+    if (!t) continue;
+    const g = groupe(n.date);
+    if (g !== groupeCourant) {
+      groupeCourant = g;
+      zone.insertAdjacentHTML('beforeend', `<h2 class="groupe-titre">${g}</h2>`);
+    }
+    const a = document.createElement('a');
+    a.className = `notif ${n.id > vuesAvant ? 'non-lue' : ''}`;
+    a.href = t.lien(n);
+    const staff = ['role_modifie', 'publication_moderee'].includes(n.action);
+    a.innerHTML = `
+      <span class="avatar-wrap">
+        ${staff ? `<span class="avatar" style="--taille:50px;background:var(--ink)">${icone('bouclier')}</span>` : avatar(n.acteur || '?', 50)}
+        <span class="type ${t.dark ? 'dark' : ''}">${icone(t.ic)}</span>
+      </span>
+      <span class="texte">
+        <b></b> ${t.txt}
+        <span class="detail muted" style="display:block;font-size:14px"></span>
+        <span class="quand">${ilYa(n.date)}</span>
+      </span>
+      ${n.image ? `<img class="miniature" src="${n.image}" alt="">`
+        : n.description && ['like_ajoute', 'commentaire_ajoute'].includes(n.action) ? '<span class="miniature"></span>' : ''}`;
+    a.querySelector('b').textContent = staff ? 'L’équipe Hesstagram' : n.acteur;
+    a.querySelector('.detail').textContent = detailNotif(n);
+    const mini = a.querySelector('span.miniature');
+    if (mini) mini.textContent = n.description.slice(0, 40);
+    zone.appendChild(a);
+  }
+}
+
+(async () => {
+  await demarrerApp('notifications');
+  document.querySelectorAll('[data-type]').forEach(b => {
+    b.onclick = () => {
+      type = b.dataset.type;
+      document.querySelectorAll('[data-type]').forEach(x => x.classList.toggle('active', x === b));
+      afficher();
+    };
+  });
+  document.getElementById('liste').innerHTML = '<div class="skeleton" style="height:60px;margin:10px 0"></div>'.repeat(5);
+  notifs = await api('/api/notifications');
+  vuesAvant = lireStockage(cleNotifsVues(), 0);
+  afficher();
+  // Tout est considéré comme lu une fois la page ouverte ; le surlignage reste jusqu'au prochain passage
+  if (notifs.length) ecrireStockage(cleNotifsVues(), notifs[0].id);
+  majCompteurs();
+})();
+</script>
+</body>
+</html>

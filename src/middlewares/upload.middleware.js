@@ -35,7 +35,7 @@ export const uploadVideo = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // Limite à 50MB par exemple
 });
 
-// À ajouter dans upload.middleware.js
+// Photos : même dossier de dépôt, mais on n'accepte que des images (10 Mo max).
 const imageFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -44,8 +44,8 @@ const imageFilter = (req, file, cb) => {
   }
 };
 
-export const uploadPhoto = multer({ 
-  storage: storage, // On réutilise son 'storage' !
+export const uploadPhoto = multer({
+  storage,
   fileFilter: imageFilter,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10 Mo max pour une photo
+  limits: { fileSize: 10 * 1024 * 1024 }
 });

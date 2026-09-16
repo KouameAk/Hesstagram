@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import { trouverPublicationAvecAuteur } from '../repositories/fil.repository.js';
+import { journaliser, ciblePublication } from '../services/journal.service.js';
+import { verifierToken, creerCompteActif } from '../middlewares/auth.middleware.js';
 
 /**
  * Backend de la fonctionnalité like / unlike.
@@ -11,14 +14,20 @@ import { Router } from 'express';
  *   le dislike est retiré automatiquement avant d'ajouter le like ;
  * - l'ensemble est exécuté dans une transaction SQLite.
  *
- * Pour cette démo, l'id de l'utilisateur est envoyé dans le JSON :
- * { "id_utilisateur": 1 }
- *
- * Dans l'application finale, il faudra prendre req.user.id depuis
- * le middleware d'authentification et ne plus faire confiance au body.
+ * L'id de l'utilisateur vient du token de connexion (req.user.id), posé par
+ * le middleware d'authentification. Le body { "id_utilisateur": 1 } reste
+ * accepté en secours pour les essais en ligne de commande.
  */
 export function creerRoutesLikes(db) {
   const router = Router();
+  const connecte = [verifierToken, creerCompteActif(db)];
+
+  // Trace au journal : c'est elle qui alimente les notifications de l'auteur
+  // de la publication et le journal de la console d'administration.
+  function tracer(req, idPublication, action) {
+    const publication = trouverPublicationAvecAuteur(db, idPublication);
+    if (publication) journaliser(db, req, action, { cible: ciblePublication(publication) });
+  }
 
   const chercherPublication = db.prepare(`
     SELECT id FROM publication WHERE id = ?
@@ -168,7 +177,7 @@ export function creerRoutesLikes(db) {
     };
   });
 
-  router.post('/:id/like', (req, res) => {
+  router.post('/:id/like', connecte, (req, res) => {
     const idPublication = convertirId(req.params.id);
     const idUtilisateur = obtenirIdUtilisateur(req);
 
@@ -198,6 +207,8 @@ export function creerRoutesLikes(db) {
         message = 'Like ajouté';
       }
 
+      if (resultat.modifie) tracer(req, idPublication, 'like_ajoute');
+
       return res.status(resultat.modifie ? 201 : 200).json({
         message,
         publicationId: idPublication,
@@ -213,7 +224,7 @@ export function creerRoutesLikes(db) {
     }
   });
 
-  router.delete('/:id/like', (req, res) => {
+  router.delete('/:id/like', connecte, (req, res) => {
     const idPublication = convertirId(req.params.id);
     const idUtilisateur = obtenirIdUtilisateur(req);
 
@@ -235,6 +246,8 @@ export function creerRoutesLikes(db) {
       if (resultat.erreur === 'UTILISATEUR_INTROUVABLE') {
         return res.status(404).json({ erreur: 'Utilisateur introuvable' });
       }
+
+      if (resultat.modifie) tracer(req, idPublication, 'like_retire');
 
       return res.status(200).json({
         message: resultat.modifie ? 'Like retiré' : 'La publication n’était pas likée',
