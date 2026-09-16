@@ -42,6 +42,15 @@ app.use('/api', creerRoutesMessagerie(db));
 app.use('/api/publications', creerRoutesLikes(db));
 app.use('/api/publications', creerRoutesDislikes(db));
 
+// Middleware global de gestion d'erreurs (garantit une réponse JSON)
+app.use((err, req, res, next) => {
+  console.error('Erreur API non interceptée :', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Erreur interne du serveur'
+  });
+});
+
 const serveurHttp = app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });
