@@ -55,6 +55,10 @@ async function updateCompte(userId, updates) {
         fields.push('mdp = ?');
         values.push(updates.mdp);
     }
+    if (updates.role !== undefined) {
+        fields.push('role = ?');
+        values.push(updates.role);
+    }
 
     if (fields.length === 0) return false;
 

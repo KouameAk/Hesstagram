@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Accueil · Hesstagram</title>
+<link rel="icon" href="/logo_Hesstagram.png">
+<link rel="stylesheet" href="/style.css">
+<script src="/theme.js"></script>
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <h1>Accueil</h1>
+      <div class="actions"><a class="btn btn-primary btn-sm" href="/publier.html"><span data-ic="plus"></span>Publier</a></div>
+    </header>
+
+    <div class="page colonnes">
+      <div class="fil">
+        <!-- Raccourci de publication -->
+        <a class="card card-pad" href="/publier.html" style="display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none">
+          <span id="mon-avatar"></span>
+          <span class="input ellipsis" id="invitation" style="color:var(--faint);border-radius:999px;min-width:0;flex:1">Partagez une photo ou une vidéo…</span>
+          <span class="btn btn-icon" style="color:var(--o-500)"><span data-ic="image"></span></span>
+          <span class="btn btn-icon" style="color:var(--o-500)"><span data-ic="camera"></span></span>
+        </a>
+
+        <div class="chips" role="tablist">
+          <button class="chip active" data-type="" role="tab" aria-selected="true">Tout</button>
+          <button class="chip" data-type="photo" role="tab" aria-selected="false">Photos</button>
+          <button class="chip" data-type="video" role="tab" aria-selected="false">Vidéos</button>
+        </div>
+
+        <div class="fil" id="fil"></div>
+      </div>
+
+      <aside class="rail">
+        <div class="card card-pad">
+          <div class="card-titre"><h3>Messagerie</h3><a class="lien-voir" href="/messagerie.html">Ouvrir</a></div>
+          <p class="muted" style="font-size:14px;margin:0">Vos conversations privées sont chiffrées de bout en bout dans votre navigateur : même le serveur ne peut pas les lire.</p>
+        </div>
+        <div class="card card-pad" id="carte-staff" hidden></div>
+        <p class="muted" style="font-size:12.5px;padding:0 8px">Hesstagram · SAÉ 5.02 · BUT R&amp;T</p>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script src="/publications.js"></script>
+<script>
+let type = '';
+
+const VIDES = {
+  '': `<div class="illu">${icone('image')}</div><h3>Le fil est encore vide</h3><p>Soyez le premier à partager une photo ou une vidéo.</p>
+       <a class="btn btn-primary" href="/publier.html">${icone('plus')}Publier</a>`,
+  photo: `<div class="illu">${icone('image')}</div><h3>Aucune photo</h3><p>Les photos publiées apparaîtront ici.</p>`,
+  video: `<div class="illu">${icone('camera')}</div><h3>Aucune vidéo</h3><p>Les vidéos publiées apparaîtront ici.</p>`
+};
+
+function chargerAccueil() {
+  return chargerFil(document.getElementById('fil'), `/api/publications${type ? `?type=${type}` : ''}`, { vide: VIDES[type] });
+}
+
+(async () => {
+  await demarrerApp('accueil');
+  poserIcones();
+  document.getElementById('mon-avatar').outerHTML = avatar(MOI.nom, 44);
+  document.getElementById('invitation').textContent = `Quoi de neuf, ${MOI.nom} ? Partagez une photo ou une vidéo…`;
+
+  if (estStaff(MOI.role)) {
+    const carte = document.getElementById('carte-staff');
+    carte.hidden = false;
+    carte.innerHTML = `
+      <div class="card-titre"><h3>Espace staff</h3></div>
+      <p class="muted" style="font-size:14px;margin:0 0 12px">Vous faites partie de l’équipe ${MOI.role === 'admin' ? 'd’administration' : 'de modération'}.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn btn-sm" href="/moderation.html">${icone('bouclier', 'icone-sm')}Modération</a>
+        ${MOI.role === 'admin' ? `<a class="btn btn-sm btn-dark" href="/admin.html">${icone('tableau', 'icone-sm')}Administration</a>` : ''}
+      </div>`;
+  }
+
+  document.querySelectorAll('[data-type]').forEach(b => {
+    b.onclick = () => {
+      type = b.dataset.type;
+      document.querySelectorAll('[data-type]').forEach(x => {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-selected', x === b);
+      });
+      chargerAccueil();
+    };
+  });
+
+  chargerAccueil();
+})();
+</script>
+</body>
+</html>

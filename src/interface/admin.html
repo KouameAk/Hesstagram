@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f1b17">
+<title>Administration · Hesstagram</title>
+<link rel="icon" href="/logo_Hesstagram.png">
+<link rel="stylesheet" href="/style.css">
+<script src="/theme.js"></script>
+<style>
+  .barres-cat { display: flex; flex-direction: column; gap: 10px; }
+  .barre-cat { display: grid; grid-template-columns: 120px 1fr 36px; gap: 10px; align-items: center; font-size: 13.5px; }
+  .barre-cat .piste { height: 8px; border-radius: 8px; background: var(--card); overflow: hidden; }
+  .barre-cat .rempli { height: 100%; border-radius: 8px; background: var(--o-500); }
+  .barre-cat b { text-align: right; font-weight: 500; }
+  .apercu-fin { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+  .filtres-journal { display: grid; grid-template-columns: minmax(200px, 1fr) 180px 150px 150px auto; gap: 10px; align-items: end; padding: 16px; border-bottom: 1px solid var(--line); }
+  .filtres-journal .field > label { font-size: 12.5px; }
+  @media (max-width: 1100px) { .filtres-journal { grid-template-columns: 1fr 1fr; } }
+  .details-cell { min-width: 260px; max-width: 420px; overflow-wrap: anywhere; color: var(--ink-2); }
+  .lien-compte { color: var(--ink); font-weight: 500; background: none; border: none; padding: 0; text-align: left; }
+  .lien-compte:hover { color: var(--o-700); text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="console" id="console" hidden>
+  <main class="console-main">
+
+    <!-- ═════════ VUE D'ENSEMBLE ═════════ -->
+    <section data-vue="tableau" hidden>
+      <div class="console-entete">
+        <div class="titres">
+          <h1 id="bonjour">Tableau de bord</h1>
+          <p>L’essentiel de la plateforme en un coup d’œil.</p>
+        </div>
+        <a class="btn btn-primary" href="/moderation.html" data-lien-file></a>
+      </div>
+      <div class="kpis" id="kpis"></div>
+      <div class="grille-dash">
+        <div class="card card-pad">
+          <div class="card-titre">
+            <h3>Activité des 14 derniers jours</h3>
+            <div class="legende"><span><i style="background:var(--o-100)"></i>Actions</span><span><i style="background:var(--o-500)"></i>Connexions</span></div>
+          </div>
+          <div class="graph" id="graph"></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-titre"><h3>Comptes à surveiller</h3><a class="lien-voir" href="/moderation.html">File</a></div>
+          <div id="a-surveiller"></div>
+        </div>
+      </div>
+      <div class="card card-pad" style="margin-top:18px">
+        <div class="card-titre"><h3>Événements sensibles récents</h3><a class="lien-voir" href="#journal">Journal complet</a></div>
+        <div id="evenements"></div>
+      </div>
+    </section>
+
+    <!-- ═════════ COMPTES & RÔLES ═════════ -->
+    <section data-vue="comptes" hidden>
+      <div class="console-entete">
+        <div class="titres">
+          <h1>Comptes &amp; rôles</h1>
+          <p>Cliquez sur un compte pour voir son activité, changer son rôle ou le sanctionner.</p>
+        </div>
+        <button class="btn" data-export="comptes"></button>
+      </div>
+      <div class="table-carte">
+        <div class="table-outils">
+          <div class="input-icone">
+            <span data-ic="recherche"></span>
+            <input class="input input-sm" id="recherche-comptes" type="search" placeholder="Rechercher un compte…">
+          </div>
+          <div class="chips" id="filtres-comptes">
+            <button class="chip active" data-filtre="">Tous</button>
+            <button class="chip" data-filtre="user">Membres</button>
+            <button class="chip" data-filtre="modo">Modérateurs</button>
+            <button class="chip" data-filtre="admin">Admins</button>
+            <button class="chip" data-filtre="suspendu">Suspendus</button>
+            <button class="chip" data-filtre="signale">Signalés</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="tri" data-tri="nom">Compte</th>
+                <th class="tri" data-tri="role">Statut</th>
+                <th>État</th>
+                <th class="tri" data-tri="nb_publications">Publications</th>
+                <th class="tri" data-tri="nb_signalements">Signalements</th>
+                <th class="tri" data-tri="derniere_activite">Dernière activité</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lignes-comptes"></tbody>
+          </table>
+        </div>
+        <div class="table-pied"><span id="pied-comptes"></span><span>Les administrateurs sont protégés</span></div>
+      </div>
+    </section>
+
+    <!-- ═════════ SUIVI DES DÉCISIONS ═════════ -->
+    <section data-vue="historique" hidden>
+      <div class="console-entete">
+        <div class="titres">
+          <h1>Suivi des décisions</h1>
+          <p>Chaque signalement déposé et chaque décision de modération, avec son auteur et l’heure exacte.</p>
+        </div>
+        <button class="btn" data-export="historique"></button>
+      </div>
+      <div class="table-carte">
+        <div class="table-outils">
+          <div class="chips" id="filtres-historique">
+            <button class="chip active" data-action="">Tout</button>
+            <button class="chip" data-action="signalement_cree">Signalements déposés</button>
+            <button class="chip" data-action="signalement_classe">Dossiers clôturés</button>
+            <button class="chip" data-action="publication_moderee">Publications retirées</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="table">
+            <thead><tr><th>Horodatage</th><th>Décision</th><th>Par</th><th>Compte visé</th><th>Détails</th></tr></thead>
+            <tbody id="lignes-historique"></tbody>
+          </table>
+        </div>
+        <div class="table-pied"><span id="pied-historique"></span><button class="btn btn-sm" id="plus-historique" hidden>Charger plus</button></div>
+      </div>
+    </section>
+
+    <!-- ═════════ JOURNAL ═════════ -->
+    <section data-vue="journal" hidden>
+      <div class="console-entete">
+        <div class="titres">
+          <h1>Journal du site</h1>
+          <p>Toutes les actions enregistrées, horodatées à la seconde, avec le compte et l’adresse IP.</p>
+        </div>
+        <button class="btn" data-export="journal"></button>
+      </div>
+      <div class="table-carte">
+        <form class="filtres-journal" id="form-journal">
+          <div class="field">
+            <label for="j-recherche">Recherche</label>
+            <div class="input-icone"><span data-ic="recherche"></span><input class="input input-sm" id="j-recherche" type="search" placeholder="Utilisateur, cible, détail, IP…"></div>
+          </div>
+          <div class="field">
+            <label for="j-categorie">Catégorie</label>
+            <select class="input input-sm" id="j-categorie"><option value="">Toutes</option></select>
+          </div>
+          <div class="field"><label for="j-du">Du</label><input class="input input-sm" type="date" id="j-du"></div>
+          <div class="field"><label for="j-au">Au</label><input class="input input-sm" type="date" id="j-au"></div>
+          <button class="btn btn-sm btn-ghost" type="reset">Réinitialiser</button>
+        </form>
+        <div class="table-scroll">
+          <table class="table">
+            <thead><tr><th>Horodatage</th><th>Utilisateur</th><th>Catégorie</th><th>Action</th><th>Cible</th><th>Détails</th><th>IP</th></tr></thead>
+            <tbody id="lignes-journal"></tbody>
+          </table>
+        </div>
+        <div class="table-pied"><span id="pied-journal"></span><button class="btn btn-sm" id="plus-journal" hidden>Charger plus</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+// ════════════════ Libellés ════════════════
+const CATEGORIES = {
+  authentification: 'Authentification', securite: 'Sécurité', contenu: 'Contenu',
+  signalement: 'Modération', messagerie: 'Messagerie', administration: 'Administration'
+};
+const ACTIONS = {
+  inscription: ['Inscription', 'suivre'], connexion: ['Connexion', 'sortie'],
+  compte_ferme: ['Compte fermé par l’utilisateur', 'poubelle'],
+  connexion_echouee: ['Connexion échouée', 'alerte'], connexion_refusee: ['Connexion refusée (suspendu)', 'interdit'],
+  mdp_modifie: ['Mot de passe modifié', 'cle'],
+  publication_creee: ['Publication créée', 'image'], publication_supprimee: ['Publication supprimée', 'poubelle'],
+  like_ajoute: ['J’aime', 'coeur'], like_retire: ['J’aime retiré', 'coeur'],
+  dislike_ajoute: ['Je n’aime pas', 'pouce_bas'], dislike_retire: ['Je n’aime pas retiré', 'pouce_bas'],
+  signalement_cree: ['Signalement déposé', 'drapeau'], signalement_classe: ['Dossier clôturé', 'coche'],
+  publication_moderee: ['Publication retirée', 'bouclier'],
+  cle_publiee: ['Clé de chiffrement publiée', 'cle'], message_envoye: ['Message chiffré envoyé', 'cadenas'],
+  role_modifie: ['Rôle modifié', 'couronne'], compte_suspendu: ['Compte suspendu', 'interdit'],
+  suspension_levee: ['Suspension levée', 'coche'], compte_supprime: ['Compte supprimé', 'poubelle']
+};
+const libelleAction = a => ACTIONS[a]?.[0] || a;
+const iconeAction = a => ACTIONS[a]?.[1] || 'activite';
+const tagCat = c => `<span class="cat cat-${c}">${CATEGORIES[c] || escapeHtml(c)}</span>`;
+
+let comptes = [];
+let triComptes = { cle: 'derniere_activite', sens: -1 };
+let filtreComptes = '';
+let vueCourante = null;
+
+function cibleHtml(j) {
+  if (!j.cible_type) return '<span class="muted">—</span>';
+  if (j.cible_type === 'publication') return `Publication n°${j.cible_id} <span class="muted">de ${escapeHtml(j.cible_nom)}</span>`;
+  return compteExiste(j.cible_id) ? `<button class="lien-compte" data-compte="${j.cible_id}">${escapeHtml(j.cible_nom)}</button>` : `<span>${escapeHtml(j.cible_nom)}</span> <span class="muted">(supprimé)</span>`;
+}
+function auteurHtml(j) {
+  if (!j.nom_utilisateur) return '<span class="muted">anonyme</span>';
+  const nom = compteExiste(j.id_utilisateur) ? `<button class="lien-compte" data-compte="${j.id_utilisateur}">${escapeHtml(j.nom_utilisateur)}</button>` : escapeHtml(j.nom_utilisateur);
+  return `<div style="display:flex;align-items:center;gap:10px">${avatar(j.nom_utilisateur, 30)}<div>${nom}${j.role_utilisateur ? `<div>${badgeStatut(j.role_utilisateur, { discret: true })}</div>` : ''}</div></div>`;
+}
+const compteExiste = id => comptes.some(c => c.id === id);
+function brancherLiensComptes(zone) {
+  zone.querySelectorAll('[data-compte]').forEach(b => {
+    b.onclick = e => { e.stopPropagation(); location.hash = `comptes-${b.dataset.compte}`; };
+  });
+}
+
+// ════════════════ Export CSV ════════════════
+function telechargerCsv(nom, entetes, lignes) {
+  const cellule = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = '﻿' + [entetes, ...lignes].map(l => l.map(cellule).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `${nom}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`${pluriel(lignes.length, 'ligne')} exportée${lignes.length > 1 ? 's' : ''}`);
+}
+const lignesJournalCsv = rows => rows.map(j => [horodatage(j.date), j.nom_utilisateur, j.role_utilisateur, CATEGORIES[j.categorie], libelleAction(j.action), j.cible_nom, j.details, j.ip]);
+const ENTETES_JOURNAL = ['Horodatage', 'Utilisateur', 'Statut', 'Catégorie', 'Action', 'Cible', 'Détails', 'IP'];
+
+// ════════════════ 1. VUE D'ENSEMBLE ════════════════
+async function chargerTableau() {
+  const { chiffres: c, activite, evenements, aSurveiller } = await api('/api/admin/stats');
+  const heure = new Date().getHours();
+  document.getElementById('bonjour').textContent = `${heure < 18 ? 'Bonjour' : 'Bonsoir'}, ${MOI.nom}`;
+  const lienFile = document.querySelector('[data-lien-file]');
+  lienFile.innerHTML = `${icone('drapeau', 'icone-sm')}${c.signalements ? `Traiter ${pluriel(c.signalements, 'signalement')}` : 'File de signalements'}`;
+
+  const kpi = (libelle, valeur, bas, ic, classe = '', href = null) =>
+    `<${href ? `a href="${href}"` : 'div'} class="kpi ${classe}" ${href ? 'style="text-decoration:none"' : ''}>
+      <div class="haut">${libelle}<span class="pastille-ic">${icone(ic)}</span></div>
+      <div class="valeur">${valeur}</div><div class="bas">${bas}</div>
+    </${href ? 'a' : 'div'}>`;
+  document.getElementById('kpis').innerHTML =
+    kpi('Comptes', c.comptes, `+${c.nouveaux_7j} cette semaine`, 'comptes', 'accent', '#comptes')
+    + kpi('Actifs (7 j)', c.actifs_7j, `${c.comptes ? Math.round(c.actifs_7j / c.comptes * 100) : 0} % des comptes`, 'activite')
+    + kpi('Modérateurs', c.moderateurs, 'dans l’équipe', 'bouclier', '', '#comptes')
+    + kpi('Suspendus', c.suspendus, c.suspendus ? 'comptes bloqués' : 'aucune suspension', 'interdit', c.suspendus ? 'alerte' : '', '#comptes')
+    + kpi('Signalements', c.signalements, 'en attente', 'drapeau', c.signalements ? 'alerte' : '', '/moderation.html')
+    + kpi('Échecs de connexion', c.echecs_24h, 'dernières 24 h', 'cadenas', c.echecs_24h >= 5 ? 'alerte' : '', '#journal');
+
+  const max = Math.max(1, ...activite.map(a => a.actions));
+  document.getElementById('graph').innerHTML = activite.map(a => {
+    const d = new Date(`${a.jour}T12:00:00`);
+    const h = Math.round(a.actions / max * 100);
+    const interne = a.actions ? Math.round(a.connexions / a.actions * 100) : 0;
+    return `<div class="barre" title="${d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} : ${pluriel(a.actions, 'action')}, ${pluriel(a.connexions, 'connexion')}, ${pluriel(a.publications, 'publication')}">
+      <div class="colonne" style="height:${Math.max(h, 2)}%"><div class="interne" style="height:${interne}%"></div></div>
+      <span class="jour">${d.toLocaleDateString('fr-FR', { day: 'numeric' })}</span>
+    </div>`;
+  }).join('');
+
+  const zoneS = document.getElementById('a-surveiller');
+  zoneS.innerHTML = aSurveiller.length ? '' : `<div class="vide" style="padding:24px 8px"><div class="illu">${icone('coche')}</div><p>Aucun compte signalé.</p></div>`;
+  for (const u of aSurveiller) {
+    const el = document.createElement('div');
+    el.className = 'ligne-compte';
+    el.innerHTML = `${avatar(u.nom, 42)}
+      <div class="infos"><div class="nom"><span class="ellipsis"></span></div><div class="sous">${pluriel(u.signalements, 'signalement')}${u.suspendu ? ' · suspendu' : ''}</div></div>
+      <button class="btn btn-xs btn-soft">Examiner</button>`;
+    el.querySelector('.ellipsis').textContent = u.nom;
+    el.querySelector('button').onclick = () => { location.hash = `comptes-${u.id}`; };
+    zoneS.appendChild(el);
+  }
+
+  const zoneE = document.getElementById('evenements');
+  zoneE.innerHTML = evenements.length ? '' : '<p class="muted">Aucun événement sensible.</p>';
+  for (const j of evenements) {
+    const el = document.createElement('div');
+    el.className = 'evenement';
+    el.innerHTML = `
+      <span class="ic ${j.categorie}">${icone(iconeAction(j.action))}</span>
+      <div class="txt"><b>${libelleAction(j.action)}</b> · <span data-qui></span><div class="muted ellipsis" data-details style="font-size:13px"></div></div>
+      <span class="quand" title="${horodatage(j.date)}">${ilYa(j.date)}</span>`;
+    el.querySelector('[data-qui]').textContent = [j.nom_utilisateur, j.cible_nom && j.cible_nom !== j.nom_utilisateur ? `→ ${j.cible_nom}` : ''].filter(Boolean).join(' ');
+    el.querySelector('[data-details]').textContent = j.details || '';
+    zoneE.appendChild(el);
+  }
+}
+
+// ════════════════ 2. COMPTES ════════════════
+async function chargerComptes() {
+  comptes = await api('/api/admin/comptes');
+  afficherComptes();
+}
+
+function afficherComptes() {
+  const q = document.getElementById('recherche-comptes').value.trim().toLowerCase();
+  const visibles = comptes.filter(u => u.nom.toLowerCase().includes(q) && (
+    !filtreComptes
+    || (filtreComptes === 'suspendu' ? !!u.suspendu
+      : filtreComptes === 'signale' ? u.nb_signalements > 0
+      : u.role === filtreComptes)));
+  const ordreRole = { admin: 0, modo: 1, user: 2 };
+  visibles.sort((a, b) => {
+    const { cle, sens } = triComptes;
+    const va = cle === 'role' ? ordreRole[a.role] : a[cle] ?? '';
+    const vb = cle === 'role' ? ordreRole[b.role] : b[cle] ?? '';
+    return (va > vb ? 1 : va < vb ? -1 : 0) * sens;
+  });
+
+  document.querySelectorAll('[data-tri]').forEach(th => {
+    const actif = th.dataset.tri === triComptes.cle;
+    th.classList.toggle('actif', actif);
+    th.innerHTML = `${th.textContent.trim()} ${icone('tri')}`;
+  });
+
+  const tbody = document.getElementById('lignes-comptes');
+  tbody.innerHTML = '';
+  document.getElementById('pied-comptes').textContent = `${pluriel(visibles.length, 'compte')} sur ${comptes.length}`;
+  if (!visibles.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="vide"><div class="illu">${icone('comptes')}</div><h3>Aucun compte</h3><p>Aucun compte ne correspond à ces critères.</p></div></td></tr>`;
+    return;
+  }
+  const idOuvert = Number(location.hash.split('-')[1]);
+  for (const u of visibles) {
+    const tr = document.createElement('tr');
+    tr.className = `cliquable ${u.id === idOuvert ? 'selection' : ''}`;
+    tr.tabIndex = 0;
+    tr.innerHTML = `
+      <td><div class="compte-cell">${avatar(u.nom, 38)}<div><div class="nom"></div><div class="muted" style="font-size:12.5px">Inscrit ${ilYa(u.date)}</div></div>${u.id === MOI.id ? '<span class="statut statut-user">vous</span>' : ''}</div></td>
+      <td>${badgeStatut(u.role)}</td>
+      <td>${u.suspendu ? `<span class="etat etat-ko" title="${escapeHtml(u.suspension_raison || 'Banni depuis l’écran de modération du groupe')}">Suspendu</span>` : '<span class="etat etat-ok">Actif</span>'}</td>
+      <td class="num">${u.nb_publications}</td>
+      <td class="num">${u.nb_signalements ? `<span class="etat ${u.nb_signalements >= 3 ? 'etat-ko' : 'etat-attente'}">${u.nb_signalements}</span>` : '<span class="muted">0</span>'}</td>
+      <td class="muted" title="${horodatage(u.derniere_activite)}">${u.derniere_activite ? ilYa(u.derniere_activite) : 'jamais'}</td>
+      <td style="text-align:right"><button class="btn btn-icon btn-sm" data-menu aria-label="Actions pour ${escapeHtml(u.nom)}">${icone('plus_options')}</button></td>`;
+    tr.querySelector('.nom').textContent = u.nom;
+    tr.onclick = () => { location.hash = `comptes-${u.id}`; };
+    tr.onkeydown = e => { if (e.key === 'Enter') tr.click(); };
+    tr.querySelector('[data-menu]').onclick = e => { e.stopPropagation(); ouvrirMenu(e.currentTarget, menuCompte(u)); };
+    tbody.appendChild(tr);
+  }
+}
+
+const protege = u => u.id === MOI.id || u.role === 'admin';
+
+function menuCompte(u) {
+  const items = [
+    { libelle: 'Ouvrir la fiche', icone: 'oeil', action: () => { location.hash = `comptes-${u.id}`; } }
+  ];
+  if (u.id !== MOI.id) items.push({ libelle: `Écrire à ${u.nom}`, icone: 'messages', action: () => window.open(`/messagerie.html?avec=${u.id}`, '_blank') });
+  if (protege(u)) return items;
+  items.push('-');
+  items.push(u.role === 'modo'
+    ? { libelle: 'Retirer le rôle modérateur', icone: 'retirer_role', action: () => changerRole(u, 'user') }
+    : { libelle: 'Nommer modérateur', icone: 'bouclier', action: () => changerRole(u, 'modo') });
+  items.push(u.suspendu
+    ? { libelle: 'Lever la suspension', icone: 'coche', action: () => leverSuspension(u) }
+    : { libelle: 'Suspendre…', icone: 'interdit', danger: true, action: () => suspendre(u) });
+  items.push({ libelle: 'Supprimer le compte…', icone: 'poubelle', danger: true, action: () => supprimer(u) });
+  return items;
+}
+
+async function apresAction(u) {
+  await chargerComptes();
+  if (document.querySelector('.tiroir')) ouvrirTiroir(u.id, ongletTiroir);
+}
+
+async function changerRole(u, role) {
+  const nommer = role === 'modo';
+  const ok = await confirmer({
+    titre: nommer ? `Nommer ${u.nom} modérateur ?` : `Retirer le rôle modérateur à ${u.nom} ?`,
+    message: nommer
+      ? 'Ce compte pourra consulter la file de signalements, clore des dossiers et retirer des publications. Il sera notifié.'
+      : 'Ce compte redevient simple membre et perd immédiatement l’accès à la modération. Il sera notifié.',
+    bouton: nommer ? 'Nommer modérateur' : 'Retirer le rôle',
+    danger: !nommer,
+    iconeAlerte: nommer ? 'bouclier' : 'alerte'
+  });
+  if (!ok) return;
+  try {
+    await api(`/api/admin/comptes/${u.id}/role`, { method: 'POST', body: { role } });
+    toast(nommer ? `${u.nom} est maintenant modérateur` : `${u.nom} n’est plus modérateur`, {
+      action: { libelle: 'Annuler', fn: () => api(`/api/admin/comptes/${u.id}/role`, { method: 'POST', body: { role: u.role } }).then(() => apresAction(u)).catch(toastErreur) }
+    });
+    apresAction(u);
+  } catch (err) { toastErreur(err); }
+}
+
+function suspendre(u) {
+  const DUREES = [[1, '1 jour'], [3, '3 jours'], [7, '7 jours'], [30, '30 jours'], ['', 'Illimitée']];
+  const RAISONS = ['Spam', 'Harcèlement', 'Discours haineux', 'Contenu inapproprié', 'Récidive après avertissement'];
+  const m = ouvrirModal({
+    titre: `Suspendre ${u.nom}`,
+    largeur: 520,
+    corps: `
+      <p>Le compte est déconnecté immédiatement. À la connexion, il verra la raison et la date de fin.</p>
+      ${u.nb_signalements ? `<div class="alerte alerte-info">${icone('drapeau')}<span>${pluriel(u.nb_signalements, 'signalement')} en attente contre ce compte.</span></div>` : ''}
+      <div class="field">
+        <span class="label">Durée</span>
+        <div class="choix-duree">${DUREES.map(([v, l], i) => `<label><input type="radio" name="duree" value="${v}" ${i === 2 ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>
+        <span class="aide" data-fin></span>
+      </div>
+      <div class="field">
+        <span class="label">Motif</span>
+        <div class="raisons-rapides">${RAISONS.map(r => `<button type="button" data-raison="${r}">${r}</button>`).join('')}</div>
+        <textarea class="input" data-raison-texte rows="3" maxlength="300" placeholder="Motif visible par le compte suspendu"></textarea>
+      </div>`,
+    pied: `<button class="btn" data-fermer>Annuler</button><button class="btn btn-danger-solid" data-ok disabled>${icone('interdit', 'icone-sm')}Suspendre</button>`
+  });
+  const texte = m.$('[data-raison-texte]');
+  const duree = () => m.$('input[name="duree"]:checked').value;
+  const maj = () => {
+    const d = duree();
+    m.$('[data-fin]').textContent = d
+      ? `Fin le ${new Date(Date.now() + d * 86400000).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })}`
+      : 'Le compte restera bloqué jusqu’à ce qu’un administrateur lève la suspension.';
+    m.$('[data-ok]').disabled = !texte.value.trim();
+  };
+  m.dialog.querySelectorAll('input[name="duree"]').forEach(r => { r.onchange = maj; });
+  m.dialog.querySelectorAll('[data-raison]').forEach(b => {
+    b.onclick = () => {
+      texte.value = b.dataset.raison;
+      m.dialog.querySelectorAll('[data-raison]').forEach(x => x.classList.toggle('active', x === b));
+      maj();
+      texte.focus();
+    };
+  });
+  texte.oninput = maj;
+  maj();
+  m.$('[data-ok]').onclick = async () => {
+    try {
+      await api(`/api/admin/comptes/${u.id}/suspension`, { method: 'POST', body: { raison: texte.value.trim(), jours: duree() ? Number(duree()) : null } });
+      m.fermer();
+      toast(`${u.nom} est suspendu`);
+      apresAction(u);
+    } catch (err) { toastErreur(err); }
+  };
+}
+
+async function leverSuspension(u) {
+  const ok = await confirmer({ titre: `Lever la suspension de ${u.nom} ?`, message: 'Le compte pourra se reconnecter immédiatement.', bouton: 'Lever la suspension' });
+  if (!ok) return;
+  try {
+    await api(`/api/admin/comptes/${u.id}/suspension`, { method: 'DELETE' });
+    toast(`Suspension de ${u.nom} levée`);
+    apresAction(u);
+  } catch (err) { toastErreur(err); }
+}
+
+async function supprimer(u) {
+  const audit = await api(`/api/admin/audit/${u.id}`).catch(() => null);
+  const c = audit?.compte || u;
+  const m = ouvrirModal({
+    titre: `Supprimer ${u.nom}`,
+    largeur: 500,
+    corps: `
+      <div class="alerte alerte-danger">${icone('alerte')}<span>Action définitive. Seront effacés : ${pluriel(c.nb_publications ?? 0, 'publication')} (photos et vidéos), ${pluriel(c.nb_messages ?? 0, 'message')}, les j’aime et les signalements. Seule la trace du journal est conservée.</span></div>
+      ${!u.suspendu ? `<div class="alerte alerte-neutre">${icone('info')}<span>Une suspension est souvent suffisante et réversible.</span><button class="btn btn-xs" data-suspendre style="margin-left:auto;align-self:center">Suspendre plutôt</button></div>` : ''}
+      <div class="field">
+        <label for="del-raison">Raison de la suppression</label>
+        <textarea class="input" id="del-raison" rows="2" maxlength="300"></textarea>
+      </div>
+      <div class="field">
+        <label for="del-nom">Tapez <b style="font-weight:600" data-nom></b> pour confirmer</label>
+        <input class="input" id="del-nom" autocomplete="off" spellcheck="false">
+      </div>`,
+    pied: `<button class="btn" data-fermer>Annuler</button><button class="btn btn-danger-solid" data-ok disabled>${icone('poubelle', 'icone-sm')}Supprimer définitivement</button>`
+  });
+  m.$('[data-nom]').textContent = u.nom;
+  const raison = m.$('#del-raison');
+  const nom = m.$('#del-nom');
+  const maj = () => { m.$('[data-ok]').disabled = !(raison.value.trim() && nom.value === u.nom); };
+  raison.oninput = maj;
+  nom.oninput = maj;
+  raison.focus();
+  m.$('[data-suspendre]')?.addEventListener('click', () => { m.fermer(); suspendre(u); });
+  m.$('[data-ok]').onclick = async () => {
+    try {
+      await api(`/api/admin/comptes/${u.id}`, { method: 'DELETE', body: { raison: raison.value.trim() } });
+      m.fermer();
+      fermerTiroir();
+      toast(`Compte ${u.nom} supprimé`);
+      chargerComptes();
+    } catch (err) { toastErreur(err); }
+  };
+}
+
+// ════════════════ Fiche compte (tiroir latéral) ════════════════
+let ongletTiroir = 'apercu';
+let tiroirCompteId = null;
+
+function fermerTiroir() {
+  document.querySelector('.tiroir')?.remove();
+  document.querySelector('.tiroir-fond')?.remove();
+  tiroirCompteId = null;
+  if (location.hash.startsWith('#comptes-')) history.replaceState(null, '', '#comptes');
+  document.querySelectorAll('#lignes-comptes tr.selection').forEach(tr => tr.classList.remove('selection'));
+}
+addEventListener('keydown', e => { if (e.key === 'Escape' && !document.querySelector('dialog[open]')) fermerTiroir(); });
+
+async function ouvrirTiroir(id, onglet = 'apercu') {
+  const u = comptes.find(c => c.id === id);
+  if (!u) { toast('Ce compte n’existe plus', { type: 'erreur' }); fermerTiroir(); return; }
+  ongletTiroir = onglet;
+  tiroirCompteId = id;
+
+  let tiroir = document.querySelector('.tiroir');
+  if (!tiroir) {
+    const fond = document.createElement('div');
+    fond.className = 'tiroir-fond';
+    fond.onclick = fermerTiroir;
+    tiroir = document.createElement('aside');
+    tiroir.className = 'tiroir';
+    tiroir.setAttribute('role', 'dialog');
+    tiroir.setAttribute('aria-label', `Fiche de ${u.nom}`);
+    document.body.append(fond, tiroir);
+  }
+  document.querySelectorAll('#lignes-comptes tr').forEach(tr => tr.classList.toggle('selection', tr.querySelector('.nom')?.textContent === u.nom));
+
+  tiroir.innerHTML = `
+    <div class="tiroir-tete">
+      <div class="ligne">
+        ${avatar(u.nom, 60, { anneau: true })}
+        <div style="flex:1;min-width:0">
+          <h2><span data-nom></span>${badgeStatut(u.role)}</h2>
+          <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+            ${u.suspendu ? '<span class="etat etat-ko">Suspendu</span>' : '<span class="etat etat-ok">Actif</span>'}
+            ${u.nb_signalements ? `<span class="etat ${u.nb_signalements >= 3 ? 'etat-ko' : 'etat-attente'}">${pluriel(u.nb_signalements, 'signalement')}</span>` : ''}
+          </div>
+        </div>
+        <button class="btn btn-icon" data-fermer aria-label="Fermer la fiche">${icone('fermer')}</button>
+      </div>
+      <nav class="tiroir-onglets">
+        <button data-onglet="apercu">Aperçu</button>
+        <button data-onglet="activite">Activité</button>
+        <button data-onglet="gerer">Gérer${protege(u) ? '' : ''}</button>
+      </nav>
+    </div>
+    <div class="tiroir-corps" data-corps><div class="skeleton" style="height:120px"></div></div>
+    <div class="tiroir-pied">
+      ${u.id !== MOI.id ? `<a class="btn btn-sm" href="/messagerie.html?avec=${u.id}" target="_blank" rel="noopener">${icone('messages', 'icone-sm')}Écrire</a>` : ''}
+    </div>`;
+  tiroir.querySelector('[data-nom]').textContent = u.nom;
+  tiroir.querySelector('[data-fermer]').onclick = fermerTiroir;
+  tiroir.querySelectorAll('[data-onglet]').forEach(b => {
+    b.classList.toggle('active', b.dataset.onglet === onglet);
+    b.onclick = () => ouvrirTiroir(id, b.dataset.onglet);
+  });
+  const corps = tiroir.querySelector('[data-corps]');
+
+  try {
+    if (onglet === 'apercu') await ongletApercu(u, corps);
+    if (onglet === 'activite') await ongletActivite(u, corps);
+    if (onglet === 'gerer') ongletGerer(u, corps);
+  } catch (err) { corps.innerHTML = ''; toastErreur(err); }
+}
+
+async function ongletApercu(u, corps) {
+  const a = await api(`/api/admin/audit/${u.id}`);
+  if (tiroirCompteId !== u.id) return;
+  const c = a.compte;
+  const totalCat = Object.fromEntries(a.parCategorie.map(x => [x.categorie, x.total]));
+  const maxCat = Math.max(1, ...Object.values(totalCat));
+  corps.innerHTML = `
+    ${c.suspendu ? `
+      <div class="alerte alerte-danger">${icone('interdit')}<div style="flex:1">
+        <b style="font-weight:500">Suspendu ${c.suspension_fin ? `jusqu’au ${horodatage(c.suspension_fin)}` : 'sans date de fin'}</b>
+        <div data-raison-susp></div>
+        ${c.suspension_date ? `<div class="apercu-fin">Depuis le ${horodatage(c.suspension_date)}</div>` : ''}
+      </div>${protege(u) ? '' : '<button class="btn btn-xs" data-lever style="align-self:center">Lever</button>'}</div>` : ''}
+    <div class="bloc">
+      <h4>${icone('info', 'icone-sm')}Informations</h4>
+      <dl class="infos-grille">
+        <div><dt>Inscrit le</dt><dd>${horodatage(c.date)}</dd></div>
+        <div><dt>Dernière connexion</dt><dd>${a.derniere_connexion ? `${horodatage(a.derniere_connexion)}` : 'jamais'}</dd></div>
+        <div><dt>Première action</dt><dd>${horodatage(a.premiere)}</dd></div>
+        <div><dt>Échecs de connexion</dt><dd style="${a.echecs_connexion >= 3 ? 'color:var(--danger)' : ''}">${a.echecs_connexion || 0}</dd></div>
+      </dl>
+    </div>
+    <div class="bloc">
+      <h4>${icone('activite', 'icone-sm')}En chiffres</h4>
+      <div class="mini-stats">
+        <div><b>${c.nb_publications}</b><span>Publications</span></div>
+        <div><b>${c.nb_messages}</b><span>Messages envoyés</span></div>
+        <div><b style="${c.signalements_en_attente ? 'color:var(--o-600)' : ''}">${c.signalements_en_attente}</b><span>Signalements reçus</span></div>
+        <div><b>${c.signalements_deposes}</b><span>Signalements déposés</span></div>
+        <div><b>${a.derniere ? ilYa(a.derniere) : '—'}</b><span>Dernière action</span></div>
+      </div>
+    </div>
+    <div class="bloc">
+      <h4>${icone('tableau', 'icone-sm')}Actions effectuées par catégorie</h4>
+      <div class="barres-cat">${Object.entries(CATEGORIES).map(([cle, label]) => `
+        <div class="barre-cat"><span>${label}</span><div class="piste"><div class="rempli" style="width:${(totalCat[cle] || 0) / maxCat * 100}%"></div></div><b>${totalCat[cle] || 0}</b></div>`).join('')}
+      </div>
+    </div>
+    <div class="bloc">
+      <h4>${icone('bouclier', 'icone-sm')}Actions le concernant</h4>
+      ${a.subies.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${a.subies.map(s => `<span class="cat">${libelleAction(s.action)} · ${s.total}</span>`).join('')}</div>` : '<p class="muted" style="font-size:14px">Aucune.</p>'}
+    </div>`;
+  const r = corps.querySelector('[data-raison-susp]');
+  if (r) r.textContent = c.suspension_raison || 'Banni depuis l’écran de modération du groupe (sans motif).';
+  corps.querySelector('[data-lever]')?.addEventListener('click', () => leverSuspension(u));
+}
+
+async function ongletActivite(u, corps) {
+  let avant = null;
+  corps.innerHTML = `
+    <div class="chips" data-cats><button class="chip active" data-cat="">Tout</button>${Object.entries(CATEGORIES).map(([k, l]) => `<button class="chip" data-cat="${k}">${l}</button>`).join('')}</div>
+    <div class="chrono" data-chrono></div>
+    <button class="btn btn-sm" data-plus hidden style="align-self:center">Charger plus</button>`;
+  let categorie = '';
+  const chrono = corps.querySelector('[data-chrono]');
+  const plus = corps.querySelector('[data-plus]');
+  const charger = async (reset) => {
+    if (reset) { avant = null; chrono.innerHTML = ''; }
+    const p = new URLSearchParams({ utilisateur: u.id, limite: 40 });
+    if (categorie) p.set('categorie', categorie);
+    if (avant) p.set('avant', avant);
+    const { lignes, suite } = await api(`/api/admin/journal?${p}`);
+    if (tiroirCompteId !== u.id) return;
+    if (!lignes.length && reset) chrono.innerHTML = `<div class="vide"><div class="illu">${icone('journal')}</div><p>Aucune action enregistrée.</p></div>`;
+    for (const j of lignes) {
+      avant = j.id;
+      const parLui = j.id_utilisateur === u.id;
+      const el = document.createElement('div');
+      el.className = 'chrono-item';
+      el.innerHTML = `
+        <span class="ic ${j.categorie}">${icone(iconeAction(j.action))}</span>
+        <div class="txt">
+          <b>${libelleAction(j.action)}</b> ${parLui ? (j.cible_nom && j.cible_type === 'utilisateur' ? `→ <span data-cible></span>` : '') : `<span class="muted">par</span> <span data-par></span>`}
+          <div class="detail" data-detail></div>
+          <div class="quand">${horodatage(j.date)} · ${tagCat(j.categorie)}${j.ip ? ` · <span class="mono">${escapeHtml(j.ip)}</span>` : ''}</div>
+        </div>`;
+      el.querySelector('[data-cible]') && (el.querySelector('[data-cible]').textContent = j.cible_nom);
+      el.querySelector('[data-par]') && (el.querySelector('[data-par]').textContent = j.nom_utilisateur || 'anonyme');
+      el.querySelector('[data-detail]').textContent = j.details || '';
+      chrono.appendChild(el);
+    }
+    plus.hidden = !suite;
+  };
+  corps.querySelectorAll('[data-cat]').forEach(b => {
+    b.onclick = () => {
+      categorie = b.dataset.cat;
+      corps.querySelectorAll('[data-cat]').forEach(x => x.classList.toggle('active', x === b));
+      charger(true).catch(toastErreur);
+    };
+  });
+  plus.onclick = () => charger(false).catch(toastErreur);
+  await charger(true);
+}
+
+function ongletGerer(u, corps) {
+  if (protege(u)) {
+    corps.innerHTML = `<div class="vide"><div class="illu">${icone('cadenas')}</div><h3>Compte protégé</h3>
+      <p>${u.id === MOI.id ? 'Vous ne pouvez pas modifier ni sanctionner votre propre compte.' : 'Les comptes administrateurs ne peuvent être ni modifiés ni sanctionnés depuis la console.'}</p></div>`;
+    return;
+  }
+  const modo = u.role === 'modo';
+  corps.innerHTML = `
+    <div class="bloc">
+      <h4>${icone('bouclier', 'icone-sm')}Rôle</h4>
+      <div class="segmented" style="width:100%">
+        <button style="flex:1;justify-content:center" class="${!modo ? 'active' : ''}" data-role="user">${icone('profil', 'icone-sm')}Membre</button>
+        <button style="flex:1;justify-content:center" class="${modo ? 'active' : ''}" data-role="modo">${icone('bouclier', 'icone-sm')}Modérateur</button>
+      </div>
+      <p class="muted" style="font-size:13.5px;margin-top:10px">${modo
+        ? 'Accès à la file de signalements : clôture des dossiers et retrait de publications.'
+        : 'Un membre publie, réagit, signale et écrit en privé. Nommez-le modérateur pour lui ouvrir la file de signalements.'}</p>
+    </div>
+    <div class="bloc">
+      <h4>${icone('alerte', 'icone-sm')}Sanctions</h4>
+      <div class="action-ligne">
+        <span class="ic ${u.suspendu ? 'orange' : 'danger'}">${icone(u.suspendu ? 'coche' : 'interdit')}</span>
+        <div class="txt"><b>${u.suspendu ? 'Lever la suspension' : 'Suspendre le compte'}</b>
+          <span>${u.suspendu ? `Suspendu ${u.suspension_fin ? `jusqu’au ${horodatage(u.suspension_fin)}` : 'sans date de fin'}` : 'Blocage temporaire ou illimité, réversible'}</span></div>
+        <button class="btn btn-sm ${u.suspendu ? '' : 'btn-danger'}" data-suspension>${u.suspendu ? 'Lever' : 'Suspendre'}</button>
+      </div>
+      <div class="action-ligne">
+        <span class="ic danger">${icone('poubelle')}</span>
+        <div class="txt"><b>Supprimer le compte</b><span>Efface le compte et tout son contenu, définitivement</span></div>
+        <button class="btn btn-sm btn-danger" data-supprimer>Supprimer</button>
+      </div>
+    </div>`;
+  corps.querySelectorAll('[data-role]').forEach(b => {
+    b.onclick = () => { if (b.dataset.role !== u.role) changerRole(u, b.dataset.role); };
+  });
+  corps.querySelector('[data-suspension]').onclick = () => (u.suspendu ? leverSuspension(u) : suspendre(u));
+  corps.querySelector('[data-supprimer]').onclick = () => supprimer(u);
+}
+
+// ════════════════ Listes du journal (historique + journal complet) ════════════════
+function listeJournal({ tbody, pied, plus, filtres, colonnes, colspan, vide }) {
+  const liste = { avant: null, total: 0 };
+  liste.charger = async (reset = true) => {
+    if (reset) { liste.avant = null; liste.total = 0; tbody.innerHTML = `<tr><td colspan="${colspan}"><div class="skeleton" style="height:40px"></div></td></tr>`; }
+    const p = new URLSearchParams({ limite: 50 });
+    for (const [k, v] of Object.entries(filtres())) if (v) p.set(k, v);
+    if (liste.avant) p.set('avant', liste.avant);
+    const { lignes, suite } = await api(`/api/admin/journal?${p}`);
+    if (reset) tbody.innerHTML = '';
+    for (const j of lignes) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = colonnes(j);
+      brancherLiensComptes(tr);
+      tbody.appendChild(tr);
+      liste.avant = j.id;
+    }
+    liste.total += lignes.length;
+    if (!liste.total) tbody.innerHTML = `<tr><td colspan="${colspan}"><div class="vide"><div class="illu">${icone('journal')}</div><h3>Aucune entrée</h3><p>${vide}</p></div></td></tr>`;
+    pied.textContent = `${pluriel(liste.total, 'entrée')} affichée${liste.total > 1 ? 's' : ''}${suite ? ' · il y en a d’autres' : ''}`;
+    plus.hidden = !suite;
+  };
+  liste.exporter = async nom => {
+    const p = new URLSearchParams({ limite: 1000 });
+    for (const [k, v] of Object.entries(filtres())) if (v) p.set(k, v);
+    const { lignes } = await api(`/api/admin/journal?${p}`);
+    telechargerCsv(nom, ENTETES_JOURNAL, lignesJournalCsv(lignes));
+  };
+  plus.onclick = () => liste.charger(false).catch(toastErreur);
+  return liste;
+}
+
+const cellulesJournal = j => `
+  <td class="mono" style="white-space:nowrap">${horodatage(j.date)}</td>
+  <td>${auteurHtml(j)}</td>
+  <td>${tagCat(j.categorie)}</td>
+  <td style="white-space:nowrap"><span style="display:inline-flex;align-items:center;gap:8px">${icone(iconeAction(j.action), 'icone-sm')}${libelleAction(j.action)}</span></td>
+  <td>${cibleHtml(j)}</td>
+  <td class="details-cell">${escapeHtml(j.details || '')}</td>
+  <td class="mono muted">${escapeHtml(j.ip || '')}</td>`;
+
+let actionHistorique = '';
+const historique = listeJournal({
+  tbody: document.getElementById('lignes-historique'),
+  pied: document.getElementById('pied-historique'),
+  plus: document.getElementById('plus-historique'),
+  colspan: 5,
+  vide: 'Aucune décision de modération pour l’instant.',
+  filtres: () => ({ categorie: 'signalement', action: actionHistorique }),
+  colonnes: j => `
+    <td class="mono" style="white-space:nowrap">${horodatage(j.date)}</td>
+    <td style="white-space:nowrap"><span style="display:inline-flex;align-items:center;gap:8px">${icone(iconeAction(j.action), 'icone-sm')}<b style="font-weight:500">${libelleAction(j.action)}</b></span></td>
+    <td>${auteurHtml(j)}</td>
+    <td>${cibleHtml(j)}</td>
+    <td class="details-cell">${escapeHtml(j.details || '')}</td>`
+});
+
+const journal = listeJournal({
+  tbody: document.getElementById('lignes-journal'),
+  pied: document.getElementById('pied-journal'),
+  plus: document.getElementById('plus-journal'),
+  colspan: 7,
+  vide: 'Aucune entrée ne correspond à ces filtres.',
+  filtres: () => ({
+    recherche: document.getElementById('j-recherche').value.trim(),
+    categorie: document.getElementById('j-categorie').value,
+    du: document.getElementById('j-du').value,
+    au: document.getElementById('j-au').value
+  }),
+  colonnes: cellulesJournal
+});
+
+// ════════════════ Navigation (#tableau, #comptes, #comptes-12, #historique, #journal) ════════════════
+async function route() {
+  const [vue, id] = (location.hash.slice(1) || 'tableau').split('-');
+  const nom = ['tableau', 'comptes', 'historique', 'journal'].includes(vue) ? vue : 'tableau';
+  activerLienConsole(nom === 'tableau' ? 'tableau' : nom);
+  document.querySelectorAll('[data-vue]').forEach(s => { s.hidden = s.dataset.vue !== nom; });
+
+  try {
+    if (nom !== vueCourante) {
+      vueCourante = nom;
+      scrollTo(0, 0);
+      if (nom === 'tableau') await chargerTableau();
+      if (nom === 'comptes') await chargerComptes();
+      if (nom === 'historique') await historique.charger();
+      if (nom === 'journal') await journal.charger();
+    }
+    if (id && nom === 'comptes') ouvrirTiroir(Number(id), 'apercu');
+    else if (!id) document.querySelector('.tiroir') && fermerTiroir();
+  } catch (err) { toastErreur(err); }
+}
+
+(async () => {
+  if (!await demarrerConsole('tableau', ['admin'])) return;
+  poserIcones();
+  document.querySelectorAll('[data-export]').forEach(b => { b.innerHTML = `${icone('telecharger', 'icone-sm')}Exporter CSV`; });
+  // Le lien « Vue d'ensemble » de la navigation pointe vers #tableau
+  document.querySelector('.console-nav a[href="/admin.html#tableau"]')?.setAttribute('href', '#tableau');
+  document.querySelectorAll('.console-nav a[href^="/admin.html#"]').forEach(a => a.setAttribute('href', a.getAttribute('href').replace('/admin.html', '')));
+
+  // Comptes : recherche, filtres, tri
+  document.getElementById('recherche-comptes').oninput = afficherComptes;
+  document.querySelectorAll('#filtres-comptes [data-filtre]').forEach(b => {
+    b.onclick = () => {
+      filtreComptes = b.dataset.filtre;
+      document.querySelectorAll('#filtres-comptes [data-filtre]').forEach(x => x.classList.toggle('active', x === b));
+      afficherComptes();
+    };
+  });
+  document.querySelectorAll('[data-tri]').forEach(th => {
+    th.onclick = () => {
+      triComptes = { cle: th.dataset.tri, sens: triComptes.cle === th.dataset.tri ? -triComptes.sens : (th.dataset.tri === 'nom' ? 1 : -1) };
+      afficherComptes();
+    };
+  });
+
+  // Historique : filtres par type de décision
+  document.querySelectorAll('#filtres-historique [data-action]').forEach(b => {
+    b.onclick = () => {
+      actionHistorique = b.dataset.action;
+      document.querySelectorAll('#filtres-historique [data-action]').forEach(x => x.classList.toggle('active', x === b));
+      historique.charger().catch(toastErreur);
+    };
+  });
+
+  // Journal : filtres appliqués pendant la saisie
+  document.getElementById('j-categorie').innerHTML += Object.entries(CATEGORIES).map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
+  let minuteur;
+  const relancer = () => { clearTimeout(minuteur); minuteur = setTimeout(() => journal.charger().catch(toastErreur), 250); };
+  ['j-recherche', 'j-categorie', 'j-du', 'j-au'].forEach(id => document.getElementById(id).addEventListener('input', relancer));
+  document.getElementById('form-journal').onreset = () => setTimeout(relancer);
+  document.getElementById('form-journal').onsubmit = e => e.preventDefault();
+
+  // Exports
+  document.querySelector('[data-export="comptes"]').onclick = () => telechargerCsv('comptes',
+    ['Id', 'Nom', 'Statut', 'État', 'Inscrit le', 'Publications', 'Signalements', 'Dernière activité', 'Motif de suspension'],
+    comptes.map(u => [u.id, u.nom, statutInfo(u.role).label, u.suspendu ? 'Suspendu' : 'Actif', horodatage(u.date), u.nb_publications, u.nb_signalements, horodatage(u.derniere_activite), u.suspension_raison]));
+  document.querySelector('[data-export="historique"]').onclick = () => historique.exporter('decisions-moderation').catch(toastErreur);
+  document.querySelector('[data-export="journal"]').onclick = () => journal.exporter('journal').catch(toastErreur);
+
+  // Les liens de compte dans le journal ont besoin de la liste des comptes
+  comptes = await api('/api/admin/comptes');
+  addEventListener('hashchange', route);
+  await route();
+})();
+</script>
+</body>
+</html>
