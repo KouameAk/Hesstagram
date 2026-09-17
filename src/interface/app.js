@@ -152,10 +152,10 @@ function poserIcones(racine = document) {
 
 // ════════════════ Avatars ════════════════
 
-// Dégradé orange stable par nom : chaque compte garde sa teinte sur toutes les pages
+// Dégradé stable par nom, tiré des couleurs du logo : chaque compte garde sa teinte sur toutes les pages
 const DEGRADES = [
-  ['#ffb35c', '#ff7a1a'], ['#ff9a6b', '#f0520f'], ['#ffcf70', '#f59a0b'], ['#f7a26f', '#d6530c'],
-  ['#ffb49a', '#ff6a4d'], ['#d9955e', '#9a5222'], ['#ffd79a', '#ff9d3c'], ['#ee8d5c', '#b2470d']
+  ['#ffb627', '#ff6a2b'], ['#ff6a2b', '#ec2f7b'], ['#ec2f7b', '#8b3cf0'], ['#ffb627', '#ec2f7b'],
+  ['#ff8a3d', '#d01b66'], ['#f8629b', '#8b3cf0'], ['#ffc54d', '#ff6a2b'], ['#b04ae8', '#6a2fd1']
 ];
 
 function avatar(nom, taille = 44, { anneau = false } = {}) {
