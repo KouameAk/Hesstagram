@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Messagerie · Hesstagram</title>
+<link rel="icon" href="/logo_Hesstagram.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main" style="padding-bottom:0">
+    <div class="messagerie" id="messagerie">
+      <!-- Liste des conversations -->
+      <section class="conv-liste">
+        <header class="entete" style="position:static;background:none">
+          <h1>Messagerie</h1>
+        </header>
+        <div class="recherche">
+          <div class="input-icone">
+            <span data-ic="recherche"></span>
+            <input class="input input-sm" id="filtre-contacts" type="search" placeholder="Rechercher un compte" style="border-radius:999px;background:var(--card)">
+          </div>
+        </div>
+        <div class="alerte alerte-danger" id="alerte-cle" hidden style="margin:0 22px 12px;flex-direction:column;gap:10px">
+          <span id="alerte-texte"></span>
+          <button class="btn btn-sm btn-danger-solid" id="regenerer" style="align-self:flex-start">Générer de nouvelles clés</button>
+        </div>
+        <div class="conv-items" id="liste-contacts"></div>
+      </section>
+
+      <!-- Conversation -->
+      <section class="chat">
+        <header class="chat-tete" id="chat-tete" hidden></header>
+        <div class="chat-fil" id="fil-messages">
+          <div class="vide" style="margin:auto">
+            <div class="illu"><span data-ic="cadenas"></span></div>
+            <h3>Vos messages privés</h3>
+            <p>Choisissez un compte. Chaque message est chiffré dans votre navigateur : même le serveur ne peut pas le lire.</p>
+          </div>
+        </div>
+        <form class="chat-saisie barre-envoi" id="saisie" hidden>
+          <input class="input" id="texte" placeholder="Écrire un message…" autocomplete="off" maxlength="2000">
+          <button class="btn-envoi" type="submit" aria-label="Envoyer" disabled><span data-ic="envoyer"></span></button>
+        </form>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script src="/chiffrement-navigateur.js"></script>
+<script src="/messagerie-client.js"></script>
+<script>
+let maCle;            // clé secrète partagée avec le contact ouvert
+let contactActif;     // { id, nom, role, publicKey }
+let contacts = [];
+let dernierId = 0;
+let dernierExpediteur = null;
+let dernierJour = null;
+let socket;
+let clesPretes = false;
+
+const messagerie = document.getElementById('messagerie');
+const fil = document.getElementById('fil-messages');
+const saisie = document.getElementById('saisie');
+const champ = document.getElementById('texte');
+const boutonEnvoi = saisie.querySelector('button');
+
+const heure = iso => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+function libelleJour(iso) {
+  const d = new Date(iso);
+  const hier = new Date(Date.now() - 86400000);
+  if (d.toDateString() === new Date().toDateString()) return 'Aujourd’hui';
+  if (d.toDateString() === hier.toDateString()) return 'Hier';
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+// ── Clés de chiffrement de ce navigateur ──
+async function verifierMesCles() {
+  const alerte = document.getElementById('alerte-cle');
+  if (!await chiffrementDisponible()) {
+    alerte.hidden = false;
+    document.getElementById('regenerer').hidden = true;
+    document.getElementById('alerte-texte').textContent =
+      'Ce navigateur ne gère pas le chiffrement X25519 utilisé par la messagerie. Utilisez un navigateur à jour (Chrome, Edge, Firefox, Safari) sur http://localhost ou en https.';
+    clesPretes = false;
+    return;
+  }
+  const etat = await assurerCles(MOI);
+  const textes = {
+    absente: 'Aucune clé privée dans ce navigateur (autre appareil ou données effacées) : impossible de lire ou d’envoyer des messages.',
+    differente: 'La clé de ce navigateur ne correspond plus à votre clé publique : les messages récents sont illisibles ici.'
+  };
+  clesPretes = !textes[etat];
+  alerte.hidden = clesPretes;
+  if (!clesPretes) document.getElementById('alerte-texte').textContent = textes[etat];
+  if (etat === 'creee') toast('Vos clés de chiffrement ont été créées');
+}
+
+document.getElementById('regenerer').onclick = async () => {
+  const ok = await confirmer({
+    titre: 'Générer de nouvelles clés ?',
+    message: 'Les messages chiffrés avec l’ancienne clé ne pourront plus jamais être lus.',
+    bouton: 'Générer', danger: true, iconeAlerte: 'alerte'
+  });
+  if (!ok) return;
+  try {
+    await genererPaireDeCles(MOI);
+    await verifierMesCles();
+    toast('Nouvelles clés générées');
+    if (contactActif) ouvrirConversation(contactActif.id);
+  } catch (err) { toastErreur(err); }
+};
+
+// ── Liste des conversations ──
+function afficherContacts() {
+  const filtre = document.getElementById('filtre-contacts').value.trim().toLowerCase();
+  const zone = document.getElementById('liste-contacts');
+  zone.innerHTML = '';
+  const visibles = contacts.filter(c => c.nom.toLowerCase().includes(filtre));
+  if (!visibles.length) {
+    zone.innerHTML = '<p class="muted" style="padding:12px;font-size:14px">Aucun compte trouvé.</p>';
+    return;
+  }
+  for (const c of visibles) {
+    const b = document.createElement('button');
+    b.className = 'conv-item' + (contactActif?.id === c.id ? ' active' : '');
+    const nonLus = c.non_lus && contactActif?.id !== c.id;
+    b.innerHTML = `
+      ${avatar(c.nom, 50)}
+      <span class="infos">
+        <span class="nom ellipsis" style="display:block;${nonLus ? 'font-weight:600' : ''}"></span>
+        <span class="sous">${c.a_cle
+          ? (nonLus ? `<span style="color:var(--o-600);font-weight:500">${pluriel(c.non_lus, 'nouveau message', 'nouveaux messages')}</span>`
+                    : (c.dernier ? `${icone('cadenas')}Conversation chiffrée` : 'Démarrer une conversation'))
+          : 'Messagerie pas encore activée'}</span>
+      </span>
+      ${nonLus ? `<span class="compteur-badge">${c.non_lus}</span>` : ''}`;
+    b.querySelector('.nom').textContent = c.nom;
+    b.onclick = () => ouvrirConversation(c.id).catch(toastErreur);
+    zone.appendChild(b);
+  }
+}
+
+async function chargerContacts() {
+  contacts = await api('/api/messagerie/contacts');
+  afficherContacts();
+}
+
+// ── Conversation ──
+async function ouvrirConversation(id) {
+  contactActif = await api(`/api/messagerie/contacts/${id}`);
+  dernierId = 0;
+  dernierExpediteur = null;
+  dernierJour = null;
+  maCle = null;
+  messagerie.classList.add('conv-ouverte');
+  history.replaceState(null, '', `/messagerie.html?avec=${id}`);
+
+  const tete = document.getElementById('chat-tete');
+  tete.hidden = false;
+  tete.innerHTML = `
+    <button class="btn btn-icon" data-retour aria-label="Retour aux conversations">${icone('retour')}</button>
+    ${avatar(contactActif.nom, 48)}
+    <div class="infos">
+      <div class="nom ellipsis"></div>
+      <div class="sous">${contactActif.publicKey ? `${icone('cadenas', 'icone-sm')}Chiffré de bout en bout` : 'Messagerie non activée'}</div>
+    </div>
+    ${contactActif.publicKey ? `<button class="btn btn-icon" data-securite aria-label="Vérifier le chiffrement" title="Vérifier le chiffrement" style="color:var(--o-600)">${icone('bouclier')}</button>` : ''}`;
+  tete.querySelector('.nom').textContent = contactActif.nom;
+  tete.querySelector('[data-retour]').onclick = () => {
+    messagerie.classList.remove('conv-ouverte');
+    contactActif = null;
+    history.replaceState(null, '', '/messagerie.html');
+    chargerContacts();
+  };
+  tete.querySelector('[data-securite]')?.addEventListener('click', afficherSecurite);
+
+  fil.innerHTML = contactActif.publicKey
+    ? `<div class="bandeau-chiffre">${icone('cadenas')}Les messages sont chiffrés de bout en bout. Personne d’autre, pas même Hesstagram, ne peut les lire.</div>
+       <div class="vide" data-vide style="margin:auto"><div class="illu">${icone('messages')}</div><h3>Dites bonjour à ${escapeHtml(contactActif.nom)}</h3><p>Votre premier message sera chiffré avant de quitter votre appareil.</p></div>`
+    : `<div class="vide" style="margin:auto"><div class="illu">${icone('cadenas')}</div><h3>${escapeHtml(contactActif.nom)} n’a pas encore activé la messagerie</h3><p>Sans sa clé publique, impossible de lui écrire un message chiffré. Elle est créée à sa prochaine connexion.</p></div>`;
+
+  if (contactActif.publicKey && clesPretes) {
+    try {
+      maCle = await cleSecreteAvec(MOI, contactActif.publicKey);
+    } catch (err) { toastErreur(err); }
+  }
+  saisie.hidden = !maCle;
+
+  await chargerHistorique();
+  chargerContacts();
+  majCompteurs();
+  if (!saisie.hidden) champ.focus();
+}
+
+async function afficherSecurite() {
+  const mienne = lireClesLocales(MOI.id)?.publicKey;
+  const [sienne, laMienne] = await Promise.all([
+    empreinte(contactActif.publicKey),
+    mienne ? empreinte(mienne) : null
+  ]);
+  const m = ouvrirModal({
+    titre: 'Vérifier le chiffrement',
+    largeur: 460,
+    corps: `
+      <p>Comparez ces empreintes avec <span data-nom></span>, de vive voix ou en personne. Si elles correspondent, personne ne peut intercepter vos messages.</p>
+      <div class="bloc"><h4>${avatar(contactActif.nom, 26)}<span data-nom></span></h4><div class="mono" style="font-size:15px;letter-spacing:.05em">${sienne}</div></div>
+      ${laMienne ? `<div class="bloc"><h4>${avatar(MOI.nom, 26)}Vous</h4><div class="mono" style="font-size:15px;letter-spacing:.05em">${laMienne}</div></div>` : ''}
+      <div class="alerte alerte-info">${icone('info')}<span>Échange de clés X25519 (Diffie-Hellman), puis AES-256-GCM pour chaque message — le chiffrement du projet.</span></div>`,
+    pied: '<button class="btn btn-primary" data-fermer>Compris</button>'
+  });
+  m.dialog.querySelectorAll('[data-nom]').forEach(el => { el.textContent = contactActif.nom; });
+}
+
+// Affiche un message déjà déchiffré
+function afficherMessage({ texte, date, deMoi, illisible = false }) {
+  fil.querySelector('[data-vide]')?.remove();
+  const jour = new Date(date).toDateString();
+  if (jour !== dernierJour) {
+    dernierJour = jour;
+    dernierExpediteur = null;
+    fil.insertAdjacentHTML('beforeend', `<div class="chat-jour">${libelleJour(date)}</div>`);
+  }
+  const ligne = document.createElement('div');
+  const expediteur = deMoi ? MOI.id : contactActif.id;
+  ligne.className = `bulle-ligne ${deMoi ? 'moi' : ''} ${dernierExpediteur === expediteur ? 'suite' : ''}`;
+  ligne.innerHTML = `${deMoi ? '' : avatar(contactActif.nom, 32)}<div class="bulle"></div>`;
+  const bulle = ligne.querySelector('.bulle');
+  if (illisible) {
+    bulle.classList.add('illisible');
+    bulle.textContent = 'Message chiffré illisible avec la clé de ce navigateur';
+  } else {
+    bulle.textContent = texte;                      // textContent : aucun HTML injecté
+    bulle.insertAdjacentHTML('beforeend', `<span class="heure">${heure(date)}</span>`);
+  }
+  dernierExpediteur = expediteur;
+  fil.appendChild(ligne);
+  fil.scrollTop = fil.scrollHeight;
+}
+
+// Messages relus depuis la base (toujours chiffrés), déchiffrés ici.
+let chargementEnCours = null;
+function chargerHistorique() {
+  // Un seul chargement à la fois : évite d'afficher deux fois le même message
+  chargementEnCours = (chargementEnCours || Promise.resolve()).then(async () => {
+    if (!contactActif) return;
+    const idConv = contactActif.id;
+    const messages = await api(`/api/messagerie/conversation/${idConv}?apres=${dernierId}`);
+    for (const m of messages) {
+      if (contactActif?.id !== idConv || m.id <= dernierId) continue;
+      dernierId = m.id;
+      let texte = null;
+      try {
+        if (maCle) texte = await dechiffrerMessage({ iv: m.iv, ciphertext: m.ciphertext, authTag: m.authTag }, maCle);
+      } catch { texte = null; }
+      afficherMessage({ texte, date: m.date, deMoi: m.expediteurId === MOI.id, illisible: texte === null });
+    }
+  }).catch(toastErreur);
+  return chargementEnCours;
+}
+
+// ── WebSocket du groupe (websocket/connexion.js) : envoi et réception en direct ──
+// Le serveur envoie { type: 'message', de, contenu } au destinataire connecté.
+// L'affichage se fait toujours depuis la base : une seule source, pas de doublon.
+let tentativesReconnexion = 0;
+
+function ouvrirWebSocket() {
+  const protocole = location.protocol === 'https:' ? 'wss' : 'ws';
+  socket = new WebSocket(`${protocole}://${location.host}/?token=${encodeURIComponent(jetonDeSession())}`);
+
+  socket.onopen = () => {
+    tentativesReconnexion = 0;
+    // Rattrapage de ce qui a pu arriver pendant la coupure
+    if (contactActif) chargerHistorique();
+    chargerContacts().catch(() => {});
+  };
+
+  socket.onmessage = async (evenement) => {
+    let donnees;
+    try { donnees = JSON.parse(evenement.data); } catch { return; }
+    if (donnees.type === 'erreur') {                 // demande refusée par le serveur (src/websocket/protection.js)
+      toast(donnees.message, { type: 'erreur' });
+      chargerContacts().catch(() => {});
+      return;
+    }
+    if (donnees.type !== 'message') return;          // 'historique' et messages de groupe : ignorés ici
+
+    const expediteur = Number(donnees.de);
+    if (contactActif && expediteur === contactActif.id) {
+      await chargerHistorique();                     // affiche, déchiffre et marque comme lu
+    } else {
+      chargerContacts().catch(() => {});
+      majCompteurs();
+      const qui = contacts.find(c => c.id === expediteur)?.nom;
+      toast(qui ? `Nouveau message de ${qui}` : 'Nouveau message reçu');
+    }
+  };
+
+  // Reconnexion en espaçant les tentatives ; au bout de 5 échecs on prévient.
+  socket.onclose = (evenement) => {
+    if (evenement.code === 4003) {                   // compte supprimé ou suspendu : la session s'arrête
+      api('/api/compte').catch(() => {});
+      return;
+    }
+    if (++tentativesReconnexion > 5) {
+      toast('Messagerie hors ligne : rechargez la page', { type: 'erreur', duree: 6000 });
+      return;
+    }
+    setTimeout(ouvrirWebSocket, 1500 * tentativesReconnexion);
+  };
+}
+
+// ── Envoi ──
+// Le message voyage par WebSocket et le serveur l'enregistre aussitôt :
+// on relit la conversation jusqu'à le voir arriver.
+async function attendreEnregistrement(avant, essais = 8) {
+  for (let i = 0; i < essais; i++) {
+    await new Promise(suite => setTimeout(suite, 150));
+    await chargerHistorique();
+    if (dernierId > avant) return true;
+  }
+  return false;
+}
+
+champ.oninput = () => { boutonEnvoi.disabled = !champ.value.trim(); };
+saisie.onsubmit = async e => {
+  e.preventDefault();
+  const texte = champ.value.trim();
+  if (!texte || !contactActif || !maCle) return;
+  if (socket?.readyState !== WebSocket.OPEN) {
+    toast('Connexion à la messagerie en cours, réessayez dans un instant', { type: 'erreur' });
+    return;
+  }
+  boutonEnvoi.disabled = true;
+  champ.value = '';
+  try {
+    const avant = dernierId;
+    const contenu = await chiffrerMessage(texte, maCle);   // chiffré ICI, avant de partir
+    socket.send(JSON.stringify({ type: 'message', versId: String(contactActif.id), contenu }));
+    api('/api/messagerie/trace', { method: 'POST', body: { versId: contactActif.id } }).catch(() => {});
+    if (!await attendreEnregistrement(avant)) {
+      toast('Message envoyé, affichage en attente du serveur', { type: 'erreur' });
+    }
+  } catch (err) {
+    champ.value = texte;                             // on ne perd pas le texte en cas d'échec
+    toastErreur(err);
+  }
+  champ.focus();
+  champ.oninput();
+};
+
+(async () => {
+  await demarrerApp('messages');
+  poserIcones();
+  document.getElementById('filtre-contacts').oninput = afficherContacts;
+
+  try { await verifierMesCles(); } catch (err) { toastErreur(err); }
+  await chargerContacts();
+  ouvrirWebSocket();
+
+  const cible = Number(new URLSearchParams(location.search).get('avec'));
+  if (cible && cible !== MOI.id) ouvrirConversation(cible).catch(toastErreur);
+  setInterval(() => { if (!contactActif) chargerContacts().catch(() => {}); }, 15000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f4f1">
+<title>Publier · Hesstagram</title>
+<link rel="icon" href="/logo_Hesstagram.png">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .zone-depot {
+    border: 2px dashed var(--line-2); border-radius: var(--r-lg); padding: 32px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--muted);
+    transition: border-color .15s, background .15s;
+  }
+  .zone-depot .illu { width: 72px; height: 72px; border-radius: 24px; background: var(--bg); color: var(--faint); display: grid; place-items: center; }
+  .zone-depot .illu .icone { width: 32px; height: 32px; }
+  .zone-depot.survol, .zone-depot.pret { border-color: var(--o-300); background: var(--o-50); }
+  .zone-depot h3 { color: var(--ink); margin: 0; overflow-wrap: anywhere; }
+  .zone-depot p { margin: 0; }
+  .apercu { width: 100%; max-height: 420px; border-radius: var(--r-md); object-fit: contain; background: var(--bg); }
+  video.apercu { background: #111; }
+  .champ-fichier { display: none; }
+  .progression { height: 8px; border-radius: 8px; background: var(--bg); overflow: hidden; margin-top: 14px; }
+  .progression div { height: 100%; width: 0; background: var(--grad); transition: width .2s; }
+</style>
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <main class="main">
+    <header class="entete">
+      <a class="btn btn-icon" href="/accueil.html" aria-label="Retour au fil"><span data-ic="retour"></span></a>
+      <h1>Nouvelle publication</h1>
+    </header>
+
+    <div class="page" style="max-width:760px">
+      <div class="segmented" role="tablist" style="margin-bottom:18px">
+        <button class="active" data-onglet="photo" role="tab"><span data-ic="image"></span>Photo</button>
+        <button data-onglet="video" role="tab"><span data-ic="camera"></span>Vidéo</button>
+      </div>
+
+      <form class="card card-pad" id="form-media" novalidate>
+        <div class="zone-depot" id="depot">
+          <div class="illu" id="depot-illu"></div>
+          <h3 id="depot-titre"></h3>
+          <p id="depot-aide"></p>
+          <input class="champ-fichier" type="file" id="fichier">
+          <button class="btn btn-primary" type="button" id="choisir">Parcourir…</button>
+        </div>
+
+        <div class="field" style="margin-top:16px">
+          <label for="description">Description <span class="compteur" id="compteur">0 / 2200</span></label>
+          <textarea class="input" id="description" rows="3" maxlength="2200"></textarea>
+        </div>
+
+        <div class="alerte alerte-info" id="avis-video" hidden style="margin-top:14px">
+          <span data-ic="info"></span>
+          <span>La vidéo est convertie en MP4 sur le serveur avant d’être publiée : selon sa taille, cela peut prendre un moment.</span>
+        </div>
+
+        <div class="progression" id="progression" hidden><div></div></div>
+        <p class="muted" id="etat" style="font-size:14px;margin:8px 0 0" hidden></p>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+          <a class="btn" href="/accueil.html">Annuler</a>
+          <button class="btn btn-primary" type="submit" id="publier" disabled>Publier</button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+<script>
+// Routes du groupe (publication.routes.js) : multipart/form-data + token JWT.
+//   photo → POST /api/publications/photo (champ « photo », 20 Mo max)
+//   vidéo → POST /api/publications/video (champ « video », 500 Mo max, conversion MP4)
+const TYPES = {
+  photo: {
+    url: '/api/publications/photo', champ: 'photo', accept: 'image/*', max: 20,
+    icone: 'image', titre: 'Choisissez une photo', aide: 'JPEG, PNG, GIF ou WebP · 20 Mo maximum',
+    placeholder: 'Écrivez une légende…', envoi: 'Envoi de la photo…'
+  },
+  video: {
+    url: '/api/publications/video', champ: 'video', accept: 'video/*,.mov,.mkv,.avi,.m4v', max: 500,
+    icone: 'camera', titre: 'Choisissez une vidéo', aide: 'MP4, MOV, WebM, MKV… · 500 Mo maximum · conversion automatique en MP4',
+    placeholder: 'De quoi parle cette vidéo ?', envoi: 'Envoi de la vidéo…'
+  }
+};
+let onglet = 'photo';
+let fichier = null;
+let urlApercu = null;
+const $ = id => document.getElementById(id);
+
+function ouvrirOnglet(nom) {
+  onglet = nom;
+  const t = TYPES[nom];
+  document.querySelectorAll('[data-onglet]').forEach(b => b.classList.toggle('active', b.dataset.onglet === nom));
+  $('fichier').accept = t.accept;
+  $('description').placeholder = t.placeholder;
+  $('avis-video').hidden = nom !== 'video';
+  choisirFichier(null);
+}
+
+function choisirFichier(f) {
+  const t = TYPES[onglet];
+  if (f && f.size > t.max * 1024 * 1024) {
+    toast(`Fichier trop lourd (${t.max} Mo maximum)`, { type: 'erreur' });
+    f = null;
+  }
+  fichier = f;
+  if (urlApercu) URL.revokeObjectURL(urlApercu);
+  urlApercu = f ? URL.createObjectURL(f) : null;
+
+  $('depot').classList.toggle('pret', Boolean(f));
+  $('depot-illu').hidden = Boolean(f);
+  $('depot-illu').innerHTML = icone(t.icone);
+  $('depot-titre').textContent = f ? f.name : t.titre;
+  $('depot-aide').textContent = f ? `${(f.size / 1024 / 1024).toFixed(1)} Mo` : t.aide;
+  $('choisir').textContent = f ? 'Changer de fichier' : 'Parcourir…';
+  $('depot').querySelector('.apercu')?.remove();
+  if (f) {
+    const apercu = document.createElement(onglet === 'video' ? 'video' : 'img');
+    apercu.className = 'apercu';
+    apercu.src = urlApercu;
+    if (onglet === 'video') { apercu.controls = true; apercu.muted = true; }
+    $('depot').prepend(apercu);
+  }
+  $('publier').disabled = !f;
+  if (!f) $('fichier').value = '';
+}
+
+// XMLHttpRequest plutôt que fetch : il donne la progression de l'envoi.
+function envoyer(formData, t) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', t.url);
+    xhr.setRequestHeader('Authorization', `Bearer ${jetonDeSession()}`);
+    xhr.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const pourcentage = Math.round(e.loaded / e.total * 100);
+      $('progression').firstElementChild.style.width = `${pourcentage}%`;
+      $('etat').textContent = pourcentage < 100
+        ? `${t.envoi} ${pourcentage} %`
+        : (onglet === 'video' ? 'Conversion en MP4 sur le serveur…' : 'Enregistrement…');
+    };
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText); } catch { data = { message: xhr.responseText }; }
+      if (xhr.status === 401 || (xhr.status === 403 && data.suspendu)) {
+        quitterSession(data.error || 'Votre session a expiré, reconnectez-vous.');
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data.success) resolve(data);
+      else reject(new Error(data.message || data.error || `Erreur ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error('Serveur injoignable.'));
+    xhr.send(formData);
+  });
+}
+
+(async () => {
+  await demarrerApp('publier');
+  poserIcones();
+
+  document.querySelectorAll('[data-onglet]').forEach(b => { b.onclick = () => ouvrirOnglet(b.dataset.onglet); });
+  $('choisir').onclick = () => $('fichier').click();
+  $('fichier').onchange = () => choisirFichier($('fichier').files[0] || null);
+  $('description').oninput = () => { $('compteur').textContent = `${$('description').value.length} / 2200`; };
+
+  // Glisser-déposer
+  const depot = $('depot');
+  depot.ondragover = e => { e.preventDefault(); depot.classList.add('survol'); };
+  depot.ondragleave = () => depot.classList.remove('survol');
+  depot.ondrop = e => {
+    e.preventDefault();
+    depot.classList.remove('survol');
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    if (f.type.startsWith('video/') && onglet !== 'video') ouvrirOnglet('video');
+    if (f.type.startsWith('image/') && onglet !== 'photo') ouvrirOnglet('photo');
+    choisirFichier(f);
+  };
+
+  ouvrirOnglet(location.hash === '#video' ? 'video' : 'photo');
+
+  $('form-media').onsubmit = async e => {
+    e.preventDefault();
+    if (!fichier) return;
+    const t = TYPES[onglet];
+    const donnees = new FormData();
+    donnees.append(t.champ, fichier);
+    donnees.append('description', $('description').value.trim());
+
+    const bouton = $('publier');
+    bouton.disabled = true;
+    bouton.textContent = 'Publication…';
+    document.querySelectorAll('[data-onglet]').forEach(b => { b.disabled = true; });
+    $('progression').hidden = false;
+    $('etat').hidden = false;
+    $('etat').textContent = t.envoi;
+    try {
+      await envoyer(donnees, t);
+      toast(onglet === 'video' ? 'Vidéo publiée' : 'Photo publiée');
+      setTimeout(() => { location.href = '/accueil.html'; }, 600);
+    } catch (err) {
+      toastErreur(err);
+      bouton.disabled = false;
+      bouton.textContent = 'Publier';
+      document.querySelectorAll('[data-onglet]').forEach(b => { b.disabled = false; });
+      $('progression').hidden = true;
+      $('etat').hidden = true;
+      $('progression').firstElementChild.style.width = '0';
+    }
+  };
+})();
+</script>
+</body>
+</html>

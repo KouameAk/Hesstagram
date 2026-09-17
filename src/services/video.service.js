@@ -24,8 +24,8 @@ export function convertirVideoEnMp4(cheminSource) {
       .output(cheminFinal)
       .videoCodec('libx264')
       .audioCodec('aac')
-      .preset('veryfast') // Accélère la conversion
       .outputOptions([
+        '-preset veryfast', // Accélère la conversion (.preset() de fluent-ffmpeg charge un fichier, pas l'option x264)
         '-pix_fmt yuv420p',
         '-movflags +faststart'
       ])
