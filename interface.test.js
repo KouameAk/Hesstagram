@@ -27,6 +27,7 @@ import * as compteService from './src/services/compte.service.js';
 import * as conversationsRepository from './src/repositories/conversations.repository.js';
 import { creerConversationPrivee, enregistrerMessage } from './src/repositories/messagerie.repository.js';
 import { listerJournal } from './src/repositories/journal.repository.js';
+import { creerRoutesHashtags } from './src/routes/hashtag.routes.js';
 import { ErreurMetier } from './src/services/erreurs.js';
 
 // ── Outils ──────────────────────────────────────────────────
@@ -351,3 +352,68 @@ describe('conversations.repository.js - liste et historique', () => {
     assert.equal(conversationsRepository.listerContacts(db, b.id).find((c) => c.id === a.id).non_lus, 0);
   });
 });
+
+// ============================================================
+//  HASHTAGS - Routes et vérification de la liste noire
+// ============================================================
+describe('hashtag.routes.js - API hashtags et liste noire', () => {
+  let db;
+  beforeEach(() => { db = baseVide(); });
+
+  function simuler(router, method, path, { user, body = {} } = {}) {
+    return new Promise((resolve) => {
+      const req = {
+        method: method.toUpperCase(),
+        url: path,
+        path: path.split('?')[0],
+        params: {},
+        query: {},
+        user,
+        body,
+        headers: {},
+      };
+      const resultat = { status: 200, json: null, ended: false };
+      const res = {
+        statusCode: 200,
+        status(code) { resultat.status = code; this.statusCode = code; return res; },
+        json(data) { resultat.json = data; resultat.ended = true; resolve(resultat); },
+        end() { resultat.ended = true; resolve(resultat); },
+      };
+      router.handle(req, res, () => resolve(resultat));
+    });
+  }
+
+  it('permet à un admin d’interdire puis de réautoriser un hashtag', async () => {
+    const admin = creerCompte(db, 'monadmin', 'admin');
+    const membre = creerCompte(db, 'simplemembre', 'user');
+    const router = creerRoutesHashtags(db);
+
+    // Un membre simple ne peut pas interdire de hashtag (403)
+    const resMembre = await simuler(router, 'POST', '/hashtags-interdits', { user: membre, body: { nom: 'interdit1' } });
+    assert.equal(resMembre.status, 403);
+
+    // L'admin peut interdire avec le symbole #
+    const resAdmin = await simuler(router, 'POST', '/hashtags-interdits', { user: admin, body: { nom: '#interdit1' } });
+    assert.equal(resAdmin.status, 201);
+    assert.equal(resAdmin.json.nom, 'interdit1');
+
+    // Vérifier l'état interdit
+    const verif = await simuler(router, 'GET', '/hashtags/verifier/interdit1', { user: membre });
+    assert.equal(verif.status, 200);
+    assert.equal(verif.json.interdit, true);
+
+    // Liste des hashtags interdits pour l'admin
+    const liste = await simuler(router, 'GET', '/hashtags-interdits', { user: admin });
+    assert.equal(liste.status, 200);
+    assert.ok(liste.json.includes('interdit1'));
+
+    // L'admin peut retirer de la liste noire
+    const retrait = await simuler(router, 'DELETE', '/hashtags-interdits/interdit1', { user: admin });
+    assert.equal(retrait.status, 204);
+
+    // Vérifier qu'il n'est plus interdit
+    const verifApres = await simuler(router, 'GET', '/hashtags/verifier/interdit1', { user: membre });
+    assert.equal(verifApres.json.interdit, false);
+  });
+});
+

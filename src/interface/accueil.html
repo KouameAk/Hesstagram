@@ -27,10 +27,15 @@
           <span class="btn btn-icon" style="color:var(--o-500)"><span data-ic="camera"></span></span>
         </a>
 
-        <div class="chips" role="tablist">
+        <div class="chips" role="tablist" id="chips-type">
           <button class="chip active" data-type="" role="tab" aria-selected="true">Tout</button>
           <button class="chip" data-type="photo" role="tab" aria-selected="false">Photos</button>
           <button class="chip" data-type="video" role="tab" aria-selected="false">Vidéos</button>
+        </div>
+
+        <div class="card card-pad" id="banniere-hashtag" hidden style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span>Publications avec <strong id="nom-hashtag"></strong></span>
+          <a class="btn btn-sm" href="/accueil.html">Voir tout le fil</a>
         </div>
 
         <div class="fil" id="fil"></div>
@@ -60,7 +65,16 @@ const VIDES = {
   video: `<div class="illu">${icone('camera')}</div><h3>Aucune vidéo</h3><p>Les vidéos publiées apparaîtront ici.</p>`
 };
 
+// Un lien sur un hashtag arrive ici avec ?hashtag=xxx : on affiche alors
+// uniquement les publications qui le contiennent, au lieu du fil normal.
+const hashtag = new URLSearchParams(location.search).get('hashtag');
+
+const VIDE_HASHTAG = `<div class="illu">${icone('image')}</div><h3>Aucune publication</h3><p>Personne n’a encore utilisé ce hashtag.</p>`;
+
 function chargerAccueil() {
+  if (hashtag) {
+    return chargerFil(document.getElementById('fil'), `/api/hashtags/${encodeURIComponent(hashtag)}`, { vide: VIDE_HASHTAG });
+  }
   return chargerFil(document.getElementById('fil'), `/api/publications${type ? `?type=${type}` : ''}`, { vide: VIDES[type] });
 }
 
@@ -69,6 +83,12 @@ function chargerAccueil() {
   poserIcones();
   document.getElementById('mon-avatar').outerHTML = avatar(MOI.nom, 44);
   document.getElementById('invitation').textContent = `Quoi de neuf, ${MOI.nom} ? Partagez une photo ou une vidéo…`;
+
+  if (hashtag) {
+    document.getElementById('chips-type').hidden = true;
+    document.getElementById('banniere-hashtag').hidden = false;
+    document.getElementById('nom-hashtag').textContent = `#${hashtag}`;
+  }
 
   if (estStaff(MOI.role)) {
     const carte = document.getElementById('carte-staff');

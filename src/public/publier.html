@@ -109,6 +109,10 @@
         <textarea name="description" rows="4" placeholder="Écrivez une description..."></textarea>
       </label>
 
+      <label>Hashtags (séparés par des espaces)
+        <input type="text" name="hashtags" placeholder="ex: #soleil #vacances">
+      </label>
+
       <button type="submit">Publier la vidéo</button>
     </form>
     <div id="message-video" class="message"></div>
@@ -124,6 +128,10 @@
       
       <label>Description
         <textarea name="description" rows="4" placeholder="Écrivez une légende..."></textarea>
+      </label>
+
+      <label>Hashtags (séparés par des espaces)
+        <input type="text" name="hashtags" placeholder="ex: #soleil #vacances">
       </label>
 
       <button type="submit">Publier la photo</button>
@@ -162,6 +170,13 @@
       msgVideo.style.display = 'block';
 
       const formData = new FormData(formVideo);
+      let descVideo = formData.get('description') || '';
+      const tagsVideo = (formData.get('hashtags') || '').trim();
+      if (tagsVideo) {
+        const mots = tagsVideo.split(/[\s,]+/).filter(Boolean).map(m => m.startsWith('#') ? m : '#' + m).join(' ');
+        if (mots) descVideo = (descVideo ? descVideo + ' ' : '') + mots;
+        formData.set('description', descVideo);
+      }
 
       try {
         const response = await fetch('/api/publications/video', {
@@ -211,6 +226,13 @@
       msgPhoto.style.display = 'block';
 
       const formData = new FormData(formPhoto);
+      let descPhoto = formData.get('description') || '';
+      const tagsPhoto = (formData.get('hashtags') || '').trim();
+      if (tagsPhoto) {
+        const mots = tagsPhoto.split(/[\s,]+/).filter(Boolean).map(m => m.startsWith('#') ? m : '#' + m).join(' ');
+        if (mots) descPhoto = (descPhoto ? descPhoto + ' ' : '') + mots;
+        formData.set('description', descPhoto);
+      }
 
       try {
         const response = await fetch('/api/publications/photo', {

@@ -160,6 +160,62 @@
         <div class="table-pied"><span id="pied-journal"></span><button class="btn btn-sm" id="plus-journal" hidden>Charger plus</button></div>
       </div>
     </section>
+
+    <!-- ═════════ HASHTAGS INTERDITS ═════════ -->
+    <section data-vue="hashtags" hidden>
+      <div class="console-entete">
+        <div class="titres">
+          <h1>Hashtags interdits</h1>
+          <p>Gérez les mots-clés bannis. Les hashtags de cette liste noire ne seront ni indexés ni associés aux publications.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="chip" id="compteur-hashtags" style="cursor:default;font-weight:600">0 hashtag interdit</span>
+        </div>
+      </div>
+
+      <!-- Carte d'ajout -->
+      <div class="card card-pad" style="margin-bottom:20px">
+        <div class="card-titre">
+          <h3>Ajouter un hashtag à la liste noire</h3>
+        </div>
+        <form id="form-ajout-hashtag" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <div class="input-icone" style="flex:1;min-width:240px">
+            <span data-ic="hashtag"></span>
+            <input class="input input-sm" id="nouveau-hashtag" type="text" placeholder="ex: spam, arnaque, haine…" autocomplete="off" required>
+          </div>
+          <button class="btn btn-primary" type="submit" id="btn-ajouter-hashtag">
+            <span data-ic="interdit"></span>Interdire ce hashtag
+          </button>
+        </form>
+        <p class="muted" style="font-size:13px;margin:8px 0 0">Le symbole <code>#</code> est nettoyé automatiquement. Lorsqu'un hashtag est interdit, ses occurrences existantes sont immédiatement retirées de l'index.</p>
+      </div>
+
+      <!-- Liste et recherche -->
+      <div class="table-carte">
+        <div class="table-outils">
+          <div class="input-icone">
+            <span data-ic="recherche"></span>
+            <input class="input input-sm" id="recherche-hashtags" type="search" placeholder="Rechercher un hashtag interdit…">
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Hashtag</th>
+                <th>Statut</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="lignes-hashtags"></tbody>
+          </table>
+        </div>
+        <div class="table-pied">
+          <span id="pied-hashtags"></span>
+          <span>Modération automatique active</span>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -758,10 +814,67 @@ const journal = listeJournal({
   colonnes: cellulesJournal
 });
 
-// ════════════════ Navigation (#tableau, #comptes, #comptes-12, #historique, #journal) ════════════════
+// ════════════════ 5. HASHTAGS INTERDITS ════════════════
+let hashtagsInterdits = [];
+
+async function chargerHashtags() {
+  hashtagsInterdits = await api('/api/hashtags-interdits');
+  afficherHashtags();
+}
+
+function afficherHashtags() {
+  const q = (document.getElementById('recherche-hashtags')?.value || '').trim().toLowerCase().replace(/^#+/, '');
+  const liste = hashtagsInterdits.filter(h => h.toLowerCase().includes(q));
+  const tbody = document.getElementById('lignes-hashtags');
+  const cpt = document.getElementById('compteur-hashtags');
+  const pied = document.getElementById('pied-hashtags');
+
+  if (cpt) cpt.textContent = `${pluriel(hashtagsInterdits.length, 'hashtag')} interdit${hashtagsInterdits.length > 1 ? 's' : ''}`;
+  if (pied) pied.textContent = `${pluriel(liste.length, 'hashtag')}${q ? ' correspondant' + (liste.length > 1 ? 's' : '') : ''}`;
+
+  if (!liste.length) {
+    tbody.innerHTML = `<tr><td colspan="3"><div class="vide" style="padding:28px 8px"><div class="illu">${icone(q ? 'recherche' : 'coche')}</div><p>${q ? 'Aucun hashtag interdit ne correspond à cette recherche.' : 'Aucun hashtag n’est actuellement interdit.'}</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = liste.map(h => `
+    <tr>
+      <td>
+        <span class="hashtag" style="font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:4px">
+          #${escapeHtml(h)}
+        </span>
+      </td>
+      <td>
+        <span class="cat cat-securite" style="display:inline-flex;align-items:center;gap:6px">
+          ${icone('interdit', 'icone-sm')} Liste noire
+        </span>
+      </td>
+      <td style="text-align:right">
+        <button class="btn btn-xs btn-ghost" data-supprimer-hashtag="${escapeHtml(h)}" title="Autoriser à nouveau">
+          ${icone('poubelle', 'icone-sm')} Autoriser
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('[data-supprimer-hashtag]').forEach(btn => {
+    btn.onclick = async () => {
+      const tag = btn.dataset.supprimerHashtag;
+      try {
+        await api(`/api/hashtags-interdits/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+        toast(`Le hashtag #${tag} a été retiré de la liste noire`);
+        await chargerHashtags();
+      } catch (err) {
+        toastErreur(err);
+      }
+    };
+  });
+}
+
+// ════════════════ Navigation (#tableau, #comptes, #comptes-12, #historique, #journal, #hashtags) ════════════════
 async function route() {
   const [vue, id] = (location.hash.slice(1) || 'tableau').split('-');
-  const nom = ['tableau', 'comptes', 'historique', 'journal'].includes(vue) ? vue : 'tableau';
+  const nom = ['tableau', 'comptes', 'historique', 'journal', 'hashtags'].includes(vue) ? vue : 'tableau';
   activerLienConsole(nom === 'tableau' ? 'tableau' : nom);
   document.querySelectorAll('[data-vue]').forEach(s => { s.hidden = s.dataset.vue !== nom; });
 
@@ -773,6 +886,7 @@ async function route() {
       if (nom === 'comptes') await chargerComptes();
       if (nom === 'historique') await historique.charger();
       if (nom === 'journal') await journal.charger();
+      if (nom === 'hashtags') await chargerHashtags();
     }
     if (id && nom === 'comptes') ouvrirTiroir(Number(id), 'apercu');
     else if (!id) document.querySelector('.tiroir') && fermerTiroir();
@@ -826,6 +940,26 @@ async function route() {
     comptes.map(u => [u.id, u.nom, statutInfo(u.role).label, u.suspendu ? 'Suspendu' : 'Actif', horodatage(u.date), u.nb_publications, u.nb_signalements, horodatage(u.derniere_activite), u.suspension_raison]));
   document.querySelector('[data-export="historique"]').onclick = () => historique.exporter('decisions-moderation').catch(toastErreur);
   document.querySelector('[data-export="journal"]').onclick = () => journal.exporter('journal').catch(toastErreur);
+
+  // Hashtags interdits : ajout et recherche
+  document.getElementById('recherche-hashtags')?.addEventListener('input', afficherHashtags);
+  document.getElementById('form-ajout-hashtag')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const input = document.getElementById('nouveau-hashtag');
+    const val = (input?.value || '').trim().replace(/^#+/, '').toLowerCase();
+    if (!val) return;
+    try {
+      await api('/api/hashtags-interdits', {
+        method: 'POST',
+        body: { nom: val }
+      });
+      input.value = '';
+      toast(`Hashtag #${val} ajouté aux hashtags interdits`);
+      await chargerHashtags();
+    } catch (err) {
+      toastErreur(err);
+    }
+  });
 
   // Les liens de compte dans le journal ont besoin de la liste des comptes
   comptes = await api('/api/admin/comptes');

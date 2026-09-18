@@ -43,7 +43,9 @@ async function api(url, options = {}) {
       'Content-Type': 'application/json',
       ...(jeton ? { Authorization: `Bearer ${jeton}` } : {})
     },
-    body: options.body ? JSON.stringify(options.body) : undefined
+    body: options.body
+      ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body))
+      : undefined
   });
   const data = await res.json().catch(() => ({}));
   if (!surLaPageDeConnexion() && (res.status === 401 || (res.status === 403 && data.suspendu))) {
@@ -138,7 +140,8 @@ const ICONES = {
   tri: '<path d="M8 5v14M4.8 15.8 8 19l3.2-3.2M16 19V5M12.8 8.2 16 5l3.2 3.2"/>',
   cle: '<circle cx="8" cy="15" r="4"/><path d="m10.9 12.1 8.6-8.6M16.4 6.6l2.6 2.6M13.8 9.2l2 2"/>',
   activite: '<path d="M3.5 12h3.8l2.6-6.2 4.2 12.4 2.6-6.2h3.8"/>',
-  filtre: '<path d="M4 6h16M7 12h10M10 18h4"/>'
+  filtre: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+  hashtag: '<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>'
 };
 
 function icone(nom, classe = '') {
@@ -409,6 +412,7 @@ async function demarrerConsole(actif, rolesAutorises) {
     ${lien('moderation', '/moderation.html', 'File de signalements', 'drapeau', 'signalements')}
     ${admin ? `
       ${lien('historique', '/admin.html#historique', 'Suivi des décisions', 'bouclier')}
+      ${lien('hashtags', '/admin.html#hashtags', 'Hashtags interdits', 'hashtag')}
       <div class="nav-section">Traçabilité</div>
       ${lien('journal', '/admin.html#journal', 'Journal du site', 'journal')}` : ''}
     <div class="nav-section">Application</div>
