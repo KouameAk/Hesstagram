@@ -141,7 +141,8 @@ const ICONES = {
   cle: '<circle cx="8" cy="15" r="4"/><path d="m10.9 12.1 8.6-8.6M16.4 6.6l2.6 2.6M13.8 9.2l2 2"/>',
   activite: '<path d="M3.5 12h3.8l2.6-6.2 4.2 12.4 2.6-6.2h3.8"/>',
   filtre: '<path d="M4 6h16M7 12h10M10 18h4"/>',
-  hashtag: '<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>'
+  hashtag: '<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>',
+  recadrer: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>'
 };
 
 function icone(nom, classe = '') {

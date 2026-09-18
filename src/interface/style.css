@@ -1121,3 +1121,53 @@ button.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 
 /* Page « Mon compte » : bordure de la zone de danger accordée au thème */
 :root .card.zone-danger { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--danger) 35%, transparent), var(--shadow); }
+
+/* ═════════════ Éditeur d'image (retouche avant publication) ═════════════
+   Recadrage + filtres de couleur, voir src/interface/editeur-image.js. */
+
+/* Zone grisée qui accueille la photo : le cadre de recadrage y est positionné
+   en absolu, en pixels calculés par editeur-image.js (voir image.onload). */
+.edit-stage-conteneur { display: flex; justify-content: center; padding: 10px; background: var(--field); border-radius: var(--r-md); }
+.edit-stage { position: relative; }
+.edit-image { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+
+/* Les 4 rectangles sombres qui masquent tout ce qui est hors du cadre de
+   recadrage (recalculés à chaque déplacement, voir dessinerCadre()). */
+.edit-rideau { position: absolute; background: rgba(10, 7, 12, .58); pointer-events: none; }
+
+/* Cadre de recadrage : déplaçable en tirant dedans, redimensionnable par ses
+   8 poignées. Le liseré blanc le distingue nettement du fond assombri. */
+.edit-cadre { position: absolute; box-shadow: 0 0 0 1.5px #fff; cursor: move; touch-action: none; }
+.edit-grille {
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    repeating-linear-gradient(to right, transparent 0 calc(100%/3 - .5px), rgba(255, 255, 255, .55) calc(100%/3 - .5px) calc(100%/3 + .5px)),
+    repeating-linear-gradient(to bottom, transparent 0 calc(100%/3 - .5px), rgba(255, 255, 255, .55) calc(100%/3 - .5px) calc(100%/3 + .5px));
+}
+.edit-poignee {
+  position: absolute; width: 16px; height: 16px; margin: -8px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 2px var(--o-500), 0 2px 6px rgba(0, 0, 0, .35); touch-action: none;
+}
+.edit-poignee.n { top: 0; left: 50%; cursor: ns-resize; }
+.edit-poignee.s { top: 100%; left: 50%; cursor: ns-resize; }
+.edit-poignee.e { top: 50%; left: 100%; cursor: ew-resize; }
+.edit-poignee.w { top: 50%; left: 0; cursor: ew-resize; }
+.edit-poignee.nw { top: 0; left: 0; cursor: nwse-resize; }
+.edit-poignee.se { top: 100%; left: 100%; cursor: nwse-resize; }
+.edit-poignee.ne { top: 0; left: 100%; cursor: nesw-resize; }
+.edit-poignee.sw { top: 100%; left: 0; cursor: nesw-resize; }
+/* Format de recadrage imposé (1:1, 4:5, 16:9) : les poignées de bord sont
+   masquées, seules celles d'angle restent (elles seules préservent le ratio). */
+.edit-cadre.ratio-fixe .edit-poignee.n, .edit-cadre.ratio-fixe .edit-poignee.s,
+.edit-cadre.ratio-fixe .edit-poignee.e, .edit-cadre.ratio-fixe .edit-poignee.w { display: none; }
+
+.edit-panneau { margin-top: 16px; }
+
+/* Bandeau de vignettes de filtres, une par filtre de FILTRES_IMAGE */
+.edit-filtres { display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px; scrollbar-width: none; }
+.edit-filtres::-webkit-scrollbar { display: none; }
+.edit-filtre { flex: none; width: 64px; display: flex; flex-direction: column; align-items: center; gap: 6px; border: none; background: none; color: var(--muted); font: 500 12.5px var(--font); }
+.edit-filtre-vignette { width: 64px; height: 64px; border-radius: var(--r-md); background-size: cover; background-position: center; box-shadow: inset 0 0 0 1.5px var(--line-2); transition: box-shadow .15s; }
+.edit-filtre:hover .edit-filtre-vignette { box-shadow: inset 0 0 0 1.5px var(--faint); }
+.edit-filtre.active { color: var(--ink); font-weight: 600; }
+.edit-filtre.active .edit-filtre-vignette { box-shadow: inset 0 0 0 2.5px var(--o-500), var(--shadow-accent); }
