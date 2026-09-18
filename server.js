@@ -20,6 +20,8 @@ import { creerRoutesMessagerie } from './src/routes/messagerie.routes.js';
 import { demarrerMessagerie } from './src/websocket/connexion.js';
 import { creerRoutesLikes } from './src/routes/likes.routes.js';
 import { creerRoutesDislikes } from './src/routes/dislikes.routes.js';
+import { creerRoutesHashtags } from './src/routes/hashtag.routes.js';
+import { extraireHashtagsPublication } from './src/middlewares/hashtag.middleware.js';
 
 // ── Interface intégrée (frontend V3) : fichiers ajoutés, aucun fichier du groupe modifié ──
 import { installerDonneesInitiales } from './src/bdd/donnees-initiales.js';
@@ -71,6 +73,7 @@ app.use('/api', controleSession(db));
 app.post('/api/auth/register', validerInscription(db));
 app.post('/api/auth/login', controlerConnexion(db));
 app.post(['/api/publications/photo', '/api/publications/video'], exigerSession, suivrePublicationMedia(db));
+app.post(['/api/publications/photo', '/api/publications/video'], extraireHashtagsPublication(db));
 app.use(['/api/publications/:id/like', '/api/publications/:id/dislike'], exigerSession, suivreReaction(db));
 app.post('/api/messagerie/cle-publique', suivreClePublique(db));
 
@@ -81,6 +84,7 @@ app.use('/api', creerRoutesModeration(db));
 app.use('/api', creerRoutesMessagerie(db));
 app.use('/api/publications', creerRoutesLikes(db));
 app.use('/api/publications', creerRoutesDislikes(db));
+app.use('/api', creerRoutesHashtags(db));
 
 // Interface intégrée : nouvelles routes
 app.use('/api/publications', creerRoutesFil(db));

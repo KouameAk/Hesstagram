@@ -559,6 +559,8 @@ img.logo-marque {
 .post-tete .meta { display: flex; align-items: center; gap: 8px; font: 400 13px var(--font); color: var(--muted); }
 .post-tete .meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); }
 .post-texte { margin-top: 12px; font: 400 15.5px/1.6 var(--font); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.hashtag { color: var(--o-500); text-decoration: none; font-weight: 500; }
+.hashtag:hover { text-decoration: underline; }
 .post-texte.replie { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .voir-plus { border: none; background: none; padding: 0; color: var(--muted); font: 500 15px var(--font); }
 .voir-plus:hover { color: var(--ink); }

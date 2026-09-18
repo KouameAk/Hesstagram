@@ -98,6 +98,15 @@ function menuPublication(p, { onSupprime }) {
   return items;
 }
 
+// Transforme les #motclé en liens cliquables vers le fil filtré sur ce
+// hashtag, en échappant le reste du texte (voir escapeHtml dans app.js).
+function texteAvecHashtags(description) {
+  return escapeHtml(description).replace(
+    /#(\w+)/g,
+    (motComplet, mot) => `<a href="/accueil.html?hashtag=${mot.toLowerCase()}" class="hashtag">#${mot}</a>`,
+  );
+}
+
 // Photo (<img>) ou vidéo MP4 convertie par le serveur (<video>)
 function mediaHtml(p) {
   if (!p.media) return '';
@@ -151,7 +160,7 @@ function cartePublication(p, { onSupprime = null } = {}) {
       </div>`;
     art.querySelector('.nom .ellipsis').textContent = p.auteur;
     const texte = art.querySelector('.post-texte');
-    if (texte) texte.textContent = p.description;
+    if (texte) texte.innerHTML = texteAvecHashtags(p.description);
     brancher();
   };
 

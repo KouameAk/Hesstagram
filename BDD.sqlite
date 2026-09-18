@@ -93,6 +93,10 @@ CREATE TABLE IF NOT EXISTS `hashtag` (
     FOREIGN KEY (`id_pub`) REFERENCES `publication` (`id`)
 );
 
+CREATE TABLE IF NOT EXISTS `hashtag_interdit` (
+    `nom` VARCHAR(255) PRIMARY KEY
+);
+
 CREATE TABLE IF NOT EXISTS `signalement` (
     `id` INTEGER PRIMARY KEY AUTOINCREMENT,
     `id_signalé` INTEGER,

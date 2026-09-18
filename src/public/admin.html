@@ -26,6 +26,18 @@
       </thead>
       <tbody id="corps-tableau"></tbody>
     </table>
+
+    <h2 style="margin-top:40px">Hashtags interdits</h2>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="champ-nouveau-hashtag" type="text" placeholder="Hashtag à interdire (ex: spam)" style="flex:1" />
+      <button type="button" id="btn-interdire-hashtag">Interdire</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Hashtag</th><th>Action</th></tr>
+      </thead>
+      <tbody id="corps-hashtags"></tbody>
+    </table>
   </div>
 
   <script src="token.js"></script>
@@ -76,9 +88,47 @@
       });
     }
 
+    async function chargerHashtags() {
+      const res = await fetch('/api/hashtags-interdits', { headers: enTeteAvecToken() });
+      if (!res.ok) return;
+      const liste = await res.json();
+      const corps = document.getElementById('corps-hashtags');
+      corps.innerHTML = '';
+      if (!liste.length) {
+        corps.innerHTML = '<tr><td colspan="2" style="color:#888">Aucun hashtag interdit.</td></tr>';
+        return;
+      }
+      for (const h of liste) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>#${h}</td><td><button type="button">Autoriser</button></td>`;
+        tr.querySelector('button').onclick = async () => {
+          await fetch(`/api/hashtags-interdits/${encodeURIComponent(h)}`, {
+            method: 'DELETE',
+            headers: enTeteAvecToken()
+          });
+          chargerHashtags();
+        };
+        corps.appendChild(tr);
+      }
+    }
+
+    document.getElementById('btn-interdire-hashtag')?.addEventListener('click', async () => {
+      const champ = document.getElementById('champ-nouveau-hashtag');
+      const nom = champ.value.trim().replace(/^#+/, '');
+      if (!nom) return;
+      await fetch('/api/hashtags-interdits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...enTeteAvecToken() },
+        body: JSON.stringify({ nom })
+      });
+      champ.value = '';
+      chargerHashtags();
+    });
+
     initialiserChampToken();
     if (bloquerSiPasConnecte('contenu-page')) {
       chargerUtilisateurs();
+      chargerHashtags();
     }
   </script>
 </body>

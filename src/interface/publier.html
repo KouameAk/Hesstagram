@@ -24,6 +24,22 @@
   .champ-fichier { display: none; }
   .progression { height: 8px; border-radius: 8px; background: var(--bg); overflow: hidden; margin-top: 14px; }
   .progression div { height: 100%; width: 0; background: var(--grad); transition: width .2s; }
+  .badge-tag {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+    border-radius: var(--pill); background: var(--o-50); color: var(--o-600);
+    font-weight: 600; font-size: 13.5px; border: 1.5px solid var(--o-200);
+  }
+  .badge-tag button {
+    background: none; border: none; color: var(--o-400); cursor: pointer;
+    padding: 0; font-size: 16px; line-height: 1; display: inline-flex; align-items: center;
+  }
+  .badge-tag button:hover { color: #dc2626; }
+  .chip-sugg {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+    border-radius: var(--pill); background: var(--card); border: 1px solid var(--line-2);
+    color: var(--muted); font-size: 12.5px; cursor: pointer; transition: all .15s;
+  }
+  .chip-sugg:hover { background: var(--o-50); color: var(--o-600); border-color: var(--o-300); }
 </style>
 </head>
 <body>
@@ -67,6 +83,32 @@
         <div class="field" style="margin-top:16px">
           <label for="description">Description <span class="compteur" id="compteur">0 / 2200</span></label>
           <textarea class="input" id="description" rows="3" maxlength="2200"></textarea>
+        </div>
+
+        <div class="field" style="margin-top:16px">
+          <label for="champ-hashtag">Hashtags <span class="aide">Associez des mots-clés cliquables à votre publication</span></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="input-icone" style="flex:1">
+              <span data-ic="hashtag"></span>
+              <input class="input" id="champ-hashtag" type="text" placeholder="Ajouter un hashtag (ex: voyage, été, hesstagram)…" autocomplete="off">
+            </div>
+            <button class="btn btn-soft" type="button" id="btn-ajouter-hashtag-pub"><span data-ic="plus"></span>Ajouter</button>
+          </div>
+          
+          <!-- Tags sélectionnés -->
+          <div id="zone-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+          
+          <!-- Alerte hashtag interdit -->
+          <div class="alerte alerte-danger" id="avis-hashtag-interdit" hidden style="margin-top:10px">
+            <span data-ic="alerte"></span>
+            <span id="texte-hashtag-interdit"></span>
+          </div>
+
+          <!-- Suggestions populaires -->
+          <div id="bloc-suggestions-hashtags" style="margin-top:10px" hidden>
+            <div class="muted" style="font-size:12.5px;margin-bottom:6px;font-weight:600">Suggestions :</div>
+            <div id="suggestions-hashtags" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          </div>
         </div>
 
         <div class="alerte alerte-info" id="avis-video" hidden style="margin-top:14px">
@@ -228,6 +270,74 @@ function envoyer(formData, t) {
     choisirFichier(f);
   };
 
+  // Gestion des hashtags
+  const tagsChoisis = new Set();
+  const zoneTags = $('zone-tags');
+  const avisInterdit = $('avis-hashtag-interdit');
+  const texteAvisInterdit = $('texte-hashtag-interdit');
+
+  function afficherTags() {
+    zoneTags.innerHTML = '';
+    for (const tag of tagsChoisis) {
+      const span = document.createElement('span');
+      span.className = 'badge-tag';
+      span.innerHTML = `#${escapeHtml(tag)} <button type="button" aria-label="Retirer">&times;</button>`;
+      span.querySelector('button').onclick = () => {
+        tagsChoisis.delete(tag);
+        afficherTags();
+      };
+      zoneTags.appendChild(span);
+    }
+  }
+
+  async function ajouterTag(mot) {
+    const propre = String(mot ?? '').replace(/^#+/, '').trim().toLowerCase();
+    if (!propre) return;
+    if (!/^\w+$/.test(propre)) {
+      toast('Un hashtag ne peut contenir que des lettres, chiffres et underscores.', { type: 'erreur' });
+      return;
+    }
+
+    try {
+      const verif = await api(`/api/hashtags/verifier/${encodeURIComponent(propre)}`);
+      if (verif && verif.interdit) {
+        texteAvisInterdit.textContent = `Le hashtag #${propre} est interdit par la modération et ne peut pas être utilisé.`;
+        avisInterdit.hidden = false;
+        toast(`Le hashtag #${propre} est interdit`, { type: 'erreur' });
+        return;
+      }
+    } catch { /* ignorer */ }
+
+    avisInterdit.hidden = true;
+    tagsChoisis.add(propre);
+    afficherTags();
+    $('champ-hashtag').value = '';
+  }
+
+  $('btn-ajouter-hashtag-pub').onclick = () => ajouterTag($('champ-hashtag').value);
+  $('champ-hashtag').onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+      e.preventDefault();
+      ajouterTag($('champ-hashtag').value);
+    }
+  };
+
+  // Suggestions de hashtags
+  try {
+    const pop = await api('/api/hashtags');
+    const suggestions = (Array.isArray(pop) && pop.length)
+      ? pop.map(p => p.nom)
+      : ['hesstagram', 'photo', 'video', 'partage', 'instant'];
+    const conteneurSugg = $('suggestions-hashtags');
+    conteneurSugg.innerHTML = suggestions.slice(0, 8).map(s => `
+      <button class="chip-sugg" type="button" data-sugg="${escapeHtml(s)}">#${escapeHtml(s)}</button>
+    `).join('');
+    conteneurSugg.querySelectorAll('[data-sugg]').forEach(btn => {
+      btn.onclick = () => ajouterTag(btn.dataset.sugg);
+    });
+    $('bloc-suggestions-hashtags').hidden = false;
+  } catch { /* ignoré */ }
+
   ouvrirOnglet(location.hash === '#video' ? 'video' : 'photo');
 
   $('etape-2').onsubmit = async e => {
@@ -248,7 +358,17 @@ function envoyer(formData, t) {
       const fichierAEnvoyer = (onglet === 'photo' && editeur) ? await editeur.obtenirFichier() : fichier;
       const donnees = new FormData();
       donnees.append(t.champ, fichierAEnvoyer);
-      donnees.append('description', $('description').value.trim());
+
+      let description = $('description').value.trim();
+      // Intégrer les tags choisis dans la description s'ils n'y figurent pas déjà
+      const descTags = (description.match(/#(\w+)/g) || []).map(m => m.slice(1).toLowerCase());
+      const tagsManquants = [...tagsChoisis].filter(t => !descTags.includes(t));
+      if (tagsManquants.length > 0) {
+        description = (description ? description + '\n\n' : '') + tagsManquants.map(t => '#' + t).join(' ');
+      }
+      donnees.append('description', description);
+      donnees.append('hashtags', JSON.stringify([...new Set([...tagsChoisis, ...descTags])]));
+
       await envoyer(donnees, t);
       toast(onglet === 'video' ? 'Vidéo publiée' : 'Photo publiée');
       setTimeout(() => { location.href = '/accueil.html'; }, 600);

@@ -32,6 +32,8 @@ import {
 import { listerUtilisateursSignales, bannirUtilisateur, debannirUtilisateur } from './src/repositories/moderation.repository.js';
 import { listerUtilisateurs, definirRole } from './src/repositories/utilisateur.repository.js';
 import { creerRegistre } from './src/services/messagerie.service.js';
+import { extraireHashtags, traiterHashtagsPublication, publicationsParHashtag, recupererTendances } from './src/services/hashtag.service.js';
+import { ajouterAListeNoire, listerListeNoire, retirerDeListeNoire, listerHashtagsPopulaires, estInterdit, obtenirTendancesHashtags } from './src/repositories/hashtag.repository.js';
 
 
 // ============================================================
@@ -555,5 +557,121 @@ describe('messagerie.service.js - livraison des messages', () => {
     const nombreLivres = registre.envoyerMessageGroupe('alice', 'groupe1', messageBidon);
     assert.equal(nombreLivres, 0);
     assert.equal(bob.messagesRecus.length, 0);
+  });
+});
+
+
+// ============================================================
+//  HASHTAGS - Extraction, recherche et liste noire
+// ============================================================
+describe('hashtag.service.js - extraction et liste noire', () => {
+  let db;
+  let idPublication;
+
+  beforeEach(() => {
+    db = ouvrirBase(':memory:');
+    const idUtilisateur = Number(
+      db.prepare('INSERT INTO utilisateur (nom, mdp) VALUES (?, ?)').run('alice', 'mdp-de-test').lastInsertRowid,
+    );
+    idPublication = Number(
+      db
+        .prepare('INSERT INTO publication (id_utilisateur, date, description) VALUES (?, CURRENT_TIMESTAMP, ?)')
+        .run(idUtilisateur, 'test').lastInsertRowid,
+    );
+  });
+
+  it('extraireHashtags trouve les mots-clés et enlève le #', () => {
+    const hashtags = extraireHashtags("Superbe rando #vosges #rando aujourd'hui");
+    assert.deepEqual(hashtags, ['vosges', 'rando']);
+  });
+
+  it('extraireHashtags normalise en minuscules', () => {
+    assert.deepEqual(extraireHashtags('#Vosges #VOSGES'), ['vosges']);
+  });
+
+  it('extraireHashtags renvoie un tableau vide si aucun hashtag', () => {
+    assert.deepEqual(extraireHashtags('Pas de mot-clé ici'), []);
+  });
+
+  it('traiterHashtagsPublication enregistre les hashtags de la description', () => {
+    const hashtags = traiterHashtagsPublication(db, idPublication, 'Belle vue #montagne #paysage');
+    assert.deepEqual(hashtags, ['montagne', 'paysage']);
+    assert.equal(publicationsParHashtag(db, 'montagne').length, 1);
+  });
+
+  it('traiterHashtagsPublication ignore les hashtags de la liste noire', () => {
+    ajouterAListeNoire(db, 'interdit');
+    const hashtags = traiterHashtagsPublication(db, idPublication, 'Un #hashtag et un #interdit');
+    assert.deepEqual(hashtags, ['hashtag']);
+    assert.equal(publicationsParHashtag(db, 'interdit').length, 0);
+  });
+
+  it('publicationsParHashtag ne renvoie rien pour un hashtag jamais utilisé', () => {
+    assert.deepEqual(publicationsParHashtag(db, 'inconnu'), []);
+  });
+
+  it('la liste noire peut être ajoutée puis retirée', () => {
+    ajouterAListeNoire(db, 'spam');
+    assert.deepEqual(listerListeNoire(db), ['spam']);
+    retirerDeListeNoire(db, 'spam');
+    assert.deepEqual(listerListeNoire(db), []);
+  });
+
+  it('ajouterAListeNoire nettoie le symbole # et supprime les occurrences existantes', () => {
+    traiterHashtagsPublication(db, idPublication, 'Super photo #interdittag');
+    assert.equal(publicationsParHashtag(db, 'interdittag').length, 1);
+
+    ajouterAListeNoire(db, '#interdittag');
+    assert.equal(estInterdit(db, 'interdittag'), true);
+    assert.deepEqual(listerListeNoire(db), ['interdittag']);
+    // Les occurrences existantes doivent avoir été retirées
+    assert.equal(publicationsParHashtag(db, 'interdittag').length, 0);
+
+    retirerDeListeNoire(db, '#interdittag');
+    assert.equal(estInterdit(db, 'interdittag'), false);
+  });
+
+  it('traiterHashtagsPublication accepte des hashtags supplémentaires (tableau ou JSON)', () => {
+    const res1 = traiterHashtagsPublication(db, idPublication, 'Texte avec #un', ['deux', '#trois']);
+    assert.deepEqual(res1.sort(), ['deux', 'trois', 'un']);
+
+    const res2 = traiterHashtagsPublication(db, idPublication, '', '["voyage", "soleil"]');
+    assert.deepEqual(res2.sort(), ['soleil', 'voyage']);
+  });
+
+  it('listerHashtagsPopulaires renvoie les hashtags triés par fréquence hors liste noire', () => {
+    traiterHashtagsPublication(db, idPublication, 'Post #populaire #autre');
+    ajouterAListeNoire(db, 'autre');
+    const pop = listerHashtagsPopulaires(db);
+    assert.ok(pop.some(p => p.nom === 'populaire'));
+    assert.ok(!pop.some(p => p.nom === 'autre'));
+  });
+
+  it('obtenirTendancesHashtags et recupererTendances classent les hashtags par nombre d utilisations', () => {
+    const idPub2 = Number(
+      db.prepare('INSERT INTO publication (id_utilisateur, date, description) VALUES (1, CURRENT_TIMESTAMP, ?)')
+        .run('autre').lastInsertRowid,
+    );
+    traiterHashtagsPublication(db, idPublication, 'Post avec #tendance et #unique');
+    traiterHashtagsPublication(db, idPub2, 'Deuxième post avec #tendance');
+
+    const tendances = obtenirTendancesHashtags(db);
+    assert.ok(tendances.length >= 2);
+    assert.equal(tendances[0].nom, 'tendance');
+    assert.equal(tendances[0].total, 2);
+    assert.equal(tendances[1].nom, 'unique');
+    assert.equal(tendances[1].total, 1);
+
+    const enrichies = recupererTendances(db);
+    assert.equal(enrichies[0].rang, 1);
+    assert.equal(enrichies[0].nom, 'tendance');
+    assert.equal(enrichies[0].label, '2 publications');
+
+    // Si on interdit le hashtag numéro 1, il disparaît immédiatement des tendances
+    ajouterAListeNoire(db, 'tendance');
+    const apresInterdit = recupererTendances(db);
+    assert.ok(!apresInterdit.some(t => t.nom === 'tendance'));
+    assert.equal(apresInterdit[0].nom, 'unique');
+    assert.equal(apresInterdit[0].rang, 1);
   });
 });
