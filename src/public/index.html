@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hesstagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <main class="ecran">
+
+    <header class="marque">
+      <img src="logo_Hesstagram.png" alt="" class="marque__logo">
+      <h1 class="marque__nom">Hesstagram</h1>
+      <p class="marque__phrase">Là où chaque instant compte.</p>
+    </header>
+
+    <div class="onglets" role="tablist" aria-label="Connexion ou inscription">
+      <span class="onglets__curseur" aria-hidden="true"></span>
+      <button type="button" class="onglet est-actif" role="tab" aria-selected="true"
+              aria-controls="panneau-connexion" data-cible="connexion">Connexion</button>
+      <button type="button" class="onglet" role="tab" aria-selected="false"
+              aria-controls="panneau-inscription" data-cible="inscription">Inscription</button>
+    </div>
+
+    <p class="message" id="message" role="status" hidden></p>
+
+    <!-- ---------------------------- CONNEXION ---------------------------- -->
+    <form class="panneau" id="form-login" role="tabpanel" id-panneau="connexion" data-panneau="connexion">
+      <div class="champ">
+        <label for="login-nom">Nom d'utilisateur</label>
+        <input type="text" id="login-nom" name="nom" autocomplete="username"
+               placeholder="jacob_jones" required>
+      </div>
+
+      <div class="champ">
+        <label for="login-mdp">Mot de passe</label>
+        <div class="champ__mdp">
+          <input type="password" id="login-mdp" name="mdp" autocomplete="current-password"
+                 placeholder="••••••••" required>
+          <button type="button" class="oeil" data-cible-mdp="login-mdp" aria-label="Afficher le mot de passe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="bouton">Se connecter</button>
+    </form>
+
+    <!-- --------------------------- INSCRIPTION --------------------------- -->
+    <form class="panneau" id="form-register" role="tabpanel" data-panneau="inscription" hidden>
+      <div class="champ">
+        <label for="register-nom">Nom d'utilisateur</label>
+        <input type="text" id="register-nom" name="nom" autocomplete="username"
+               placeholder="Choisissez un pseudo" required>
+      </div>
+
+      <div class="champ">
+        <label for="register-mdp">Mot de passe</label>
+        <div class="champ__mdp">
+          <input type="password" id="register-mdp" name="mdp" autocomplete="new-password"
+                 placeholder="12 caractères minimum" required>
+          <button type="button" class="oeil" data-cible-mdp="register-mdp" aria-label="Afficher le mot de passe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+              <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="bouton">Créer le compte</button>
+    </form>
+
+  </main>
+
+<script>
+  /* ----------------------------------------------------------------
+     Bascule entre les deux onglets (Connexion / Inscription).
+     Le curseur noir se déplace, le panneau correspondant s'affiche.
+  ---------------------------------------------------------------- */
+  const onglets   = document.querySelectorAll('.onglet');
+  const curseur   = document.querySelector('.onglets__curseur');
+  const panneaux  = document.querySelectorAll('.panneau');
+  const zoneMsg   = document.getElementById('message');
+
+  onglets.forEach((onglet, index) => {
+    onglet.addEventListener('click', () => {
+      onglets.forEach(o => {
+        o.classList.toggle('est-actif', o === onglet);
+        o.setAttribute('aria-selected', o === onglet);
+      });
+      curseur.style.transform = `translateX(${index * 100}%)`;
+      panneaux.forEach(p => {
+        p.hidden = (p.dataset.panneau !== onglet.dataset.cible);
+      });
+      cacherMessage();
+    });
+  });
+
+  /* Affichage / masquage du mot de passe */
+  document.querySelectorAll('.oeil').forEach(bouton => {
+    bouton.addEventListener('click', () => {
+      const input = document.getElementById(bouton.dataset.cibleMdp);
+      const visible = input.type === 'text';
+      input.type = visible ? 'password' : 'text';
+      bouton.classList.toggle('est-actif', !visible);
+      bouton.setAttribute('aria-label', visible ? 'Afficher le mot de passe' : 'Masquer le mot de passe');
+    });
+  });
+
+  /* Zone de message (erreur ou succès) */
+  function afficherMessage(texte, type) {
+    zoneMsg.textContent = texte;
+    zoneMsg.className = 'message est-' + type;
+    zoneMsg.hidden = false;
+  }
+  function cacherMessage() {
+    zoneMsg.hidden = true;
+    zoneMsg.textContent = '';
+  }
+
+  /* Récupère le texte d'erreur renvoyé par l'API, quel que soit
+     le nom de la clé utilisée côté back (message, erreur, error). */
+  function texteErreur(data) {
+    return data.message || data.erreur || data.error || 'Une erreur est survenue.';
+  }
+
+  /* ----------------------------------------------------------------
+     Appel de l'API. Même contrat qu'avant : POST JSON sur
+     /api/auth/register et /api/auth/login.
+  ---------------------------------------------------------------- */
+  async function envoyer(url, donnees, bouton) {
+    bouton.disabled = true;
+    bouton.classList.add('est-occupe');
+    try {
+      const reponse = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(donnees)
+      });
+      const data = await reponse.json();
+      return { ok: reponse.ok, data };
+    } catch (erreur) {
+      afficherMessage('Serveur injoignable : ' + erreur.message, 'erreur');
+      return null;
+    } finally {
+      bouton.disabled = false;
+      bouton.classList.remove('est-occupe');
+    }
+  }
+
+  /* Inscription */
+  document.getElementById('form-register').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    cacherMessage();
+    const donnees = Object.fromEntries(new FormData(e.target));
+    const res = await envoyer('/api/auth/register', donnees, e.target.querySelector('.bouton'));
+    if (!res) return;
+
+    if (res.ok) {
+      afficherMessage('Compte créé. Connectez-vous pour continuer.', 'succes');
+      e.target.reset();
+    } else {
+      afficherMessage(texteErreur(res.data), 'erreur');
+    }
+  });
+
+  /* Connexion : on garde le token et le nom, puis on redirige */
+  document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    cacherMessage();
+    const donnees = Object.fromEntries(new FormData(e.target));
+    const res = await envoyer('/api/auth/login', donnees, e.target.querySelector('.bouton'));
+    if (!res) return;
+
+    if (res.ok && res.data.token) {
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('nom', res.data.user.nom);
+      localStorage.setItem('role', res.data.user.role);
+      window.location.href = 'accueil.html';
+    } else {
+      afficherMessage(texteErreur(res.data), 'erreur');
+    }
+  });
+</script>
+
+</body>
+</html>

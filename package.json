@@ -1,0 +1,27 @@
+{
+  "name": "hesstagram-backend",
+  "version": "1.0.0",
+  "description": "Backend du projet Hesstagram",
+  "main": "server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test *.test.js",
+    "test": "node --test",
+    "seed": "node scripts/seed-demo.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ffmpeg-static": "^5.3.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.0"
+  }
+}
