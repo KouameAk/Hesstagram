@@ -7,10 +7,18 @@ import {
   estInterdit,
   listerHashtagsPopulaires,
 } from '../repositories/hashtag.repository.js';
+import { recupererTendances } from '../services/hashtag.service.js';
 import { exigerSession, exigerRoles } from '../middlewares/session.middleware.js';
 
 export function creerRoutesHashtags(db) {
   const router = Router();
+
+  // Tendances : hashtags les plus utilisés
+  router.get('/hashtags/tendances', exigerSession, (req, res) => {
+    const limite = Math.min(Math.max(1, Number(req.query.limite) || 10), 50);
+    const periode = req.query.periode || null;
+    res.json(recupererTendances(db, { limite, periode }));
+  });
 
   // Liste des hashtags populaires/tendances (hors interdits)
   // Accessible aux membres connectés pour les suggestions

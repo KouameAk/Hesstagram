@@ -190,6 +190,17 @@
         <p class="muted" style="font-size:13px;margin:8px 0 0">Le symbole <code>#</code> est nettoyé automatiquement. Lorsqu'un hashtag est interdit, ses occurrences existantes sont immédiatement retirées de l'index.</p>
       </div>
 
+      <!-- Carte des tendances actuelles -->
+      <div class="card card-pad" style="margin-bottom:20px" id="carte-admin-tendances">
+        <div class="card-titre">
+          <h3 style="display:flex;align-items:center;gap:8px"><span data-ic="hashtag"></span>Tendances actuelles</h3>
+          <span class="muted" style="font-size:13px">Hashtags les plus actifs sur la plateforme</span>
+        </div>
+        <div id="liste-admin-tendances" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px">
+          <p class="muted" style="font-size:13.5px">Chargement des tendances…</p>
+        </div>
+      </div>
+
       <!-- Liste et recherche -->
       <div class="table-carte">
         <div class="table-outils">
@@ -820,6 +831,44 @@ let hashtagsInterdits = [];
 async function chargerHashtags() {
   hashtagsInterdits = await api('/api/hashtags-interdits');
   afficherHashtags();
+  await chargerTendancesAdmin();
+}
+
+async function chargerTendancesAdmin() {
+  const conteneur = document.getElementById('liste-admin-tendances');
+  if (!conteneur) return;
+  try {
+    const tendances = await api('/api/hashtags/tendances?limite=12');
+    if (!tendances || !tendances.length) {
+      conteneur.innerHTML = '<p class="muted" style="font-size:13px">Aucun hashtag actif sur la plateforme pour l’instant.</p>';
+      return;
+    }
+    conteneur.innerHTML = tendances.map(t => `
+      <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:var(--card);border:1px solid var(--line-2);border-radius:var(--pill);box-shadow:var(--shadow-sm)">
+        <span style="font-weight:700;color:var(--o-600);font-size:13.5px">#${escapeHtml(t.nom)}</span>
+        <span class="muted" style="font-size:12px">${escapeHtml(t.label)}</span>
+        <button class="btn btn-xs btn-ghost" data-interdire-tendance="${escapeHtml(t.nom)}" title="Ajouter ce hashtag à la liste noire" style="color:var(--danger);padding:0 6px">
+          ${icone('interdit', 'icone-sm')} Interdire
+        </button>
+      </div>
+    `).join('');
+
+    conteneur.querySelectorAll('[data-interdire-tendance]').forEach(b => {
+      b.onclick = async () => {
+        const nom = b.dataset.interdireTendance;
+        if (!confirm(`Voulez-vous vraiment interdire le hashtag #${nom} ? Ses occurrences existantes seront retirées.`)) return;
+        try {
+          await api('/api/hashtags-interdits', { method: 'POST', body: { nom } });
+          toast(`Hashtag #${nom} interdit`);
+          await chargerHashtags();
+        } catch (err) {
+          toastErreur(err);
+        }
+      };
+    });
+  } catch (err) {
+    console.error('Erreur tendances admin:', err);
+  }
 }
 
 function afficherHashtags() {

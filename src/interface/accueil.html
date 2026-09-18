@@ -33,6 +33,9 @@
           <button class="chip" data-type="video" role="tab" aria-selected="false">Vidéos</button>
         </div>
 
+        <!-- Tendances rapides -->
+        <div class="chips" id="chips-tendances" style="margin-top:-6px;margin-bottom:8px" hidden></div>
+
         <div class="card card-pad" id="banniere-hashtag" hidden style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <span>Publications avec <strong id="nom-hashtag"></strong></span>
           <a class="btn btn-sm" href="/accueil.html">Voir tout le fil</a>
@@ -42,6 +45,17 @@
       </div>
 
       <aside class="rail">
+        <!-- Carte Tendances -->
+        <div class="card card-pad" id="carte-tendances">
+          <div class="card-titre">
+            <h3 style="display:flex;align-items:center;gap:8px"><span data-ic="hashtag"></span>Tendances</h3>
+            <span class="muted" style="font-size:12px;font-weight:600">Populaires</span>
+          </div>
+          <div id="liste-tendances">
+            <p class="muted" style="font-size:13.5px;padding:8px 0">Chargement des tendances…</p>
+          </div>
+        </div>
+
         <div class="card card-pad">
           <div class="card-titre"><h3>Messagerie</h3><a class="lien-voir" href="/messagerie.html">Ouvrir</a></div>
           <p class="muted" style="font-size:14px;margin:0">Vos conversations privées sont chiffrées de bout en bout dans votre navigateur : même le serveur ne peut pas les lire.</p>
@@ -113,7 +127,51 @@ function chargerAccueil() {
     };
   });
 
+  async function chargerTendances() {
+    try {
+      const tendances = await api('/api/hashtags/tendances?limite=6');
+      const conteneur = document.getElementById('liste-tendances');
+      const chipsConteneur = document.getElementById('chips-tendances');
+
+      if (!tendances || !tendances.length) {
+        if (conteneur) conteneur.innerHTML = '<p class="muted" style="font-size:13.5px;padding:8px 0">Aucune tendance pour le moment.</p>';
+        return;
+      }
+
+      if (conteneur) {
+        conteneur.innerHTML = tendances.map(t => `
+          <a href="/accueil.html?hashtag=${encodeURIComponent(t.nom)}" class="tendance" style="text-decoration:none">
+            <div>
+              <div class="tag">#${escapeHtml(t.nom)}</div>
+              <div class="muted" style="font-size:12px;display:flex;align-items:center;gap:6px">
+                <span style="color:var(--o-600);font-weight:700">#${t.rang}</span>
+                <span>Tendance</span>
+              </div>
+            </div>
+            <span class="nb">${escapeHtml(t.label)}</span>
+          </a>
+        `).join('');
+      }
+
+      if (chipsConteneur && !hashtag) {
+        chipsConteneur.hidden = false;
+        chipsConteneur.innerHTML = `
+          <span class="muted" style="font-size:12px;align-self:center;margin-right:4px;font-weight:600">Tendances :</span>
+          ${tendances.slice(0, 5).map(t => `
+            <a href="/accueil.html?hashtag=${encodeURIComponent(t.nom)}" class="chip" style="text-decoration:none;height:32px;padding:0 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px">
+              <span>#${escapeHtml(t.nom)}</span>
+              <span style="font-size:11px;opacity:0.75;font-weight:600">${t.total}</span>
+            </a>
+          `).join('')}
+        `;
+      }
+    } catch (err) {
+      console.error('Erreur chargement tendances:', err);
+    }
+  }
+
   chargerAccueil();
+  chargerTendances();
 })();
 </script>
 </body>

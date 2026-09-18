@@ -88,3 +88,46 @@ export function listerHashtagsPopulaires(db, limite = 20) {
     )
     .all(limite);
 }
+
+// Calcule les tendances des hashtags (les plus utilisés), avec période optionnelle (24h, 7j ou global)
+export function obtenirTendancesHashtags(db, { limite = 10, periode = null } = {}) {
+  let clauseDate = '';
+  if (periode === '24h') {
+    clauseDate = "AND p.date >= datetime('now', '-1 day')";
+  } else if (periode === '7j') {
+    clauseDate = "AND p.date >= datetime('now', '-7 days')";
+  }
+
+  let resultats = [];
+  if (clauseDate) {
+    resultats = db
+      .prepare(
+        `SELECT h.nom, COUNT(*) AS total
+         FROM hashtag h
+         JOIN publication p ON p.id = h.id_pub
+         WHERE h.nom NOT IN (SELECT nom FROM hashtag_interdit)
+         ${clauseDate}
+         GROUP BY h.nom
+         ORDER BY total DESC, h.nom ASC
+         LIMIT ?`,
+      )
+      .all(limite);
+  }
+
+  // Si aucun résultat récent ou sans période spécifiée, calcul sur le volume global
+  if (!resultats.length) {
+    resultats = db
+      .prepare(
+        `SELECT h.nom, COUNT(*) AS total
+         FROM hashtag h
+         WHERE h.nom NOT IN (SELECT nom FROM hashtag_interdit)
+         GROUP BY h.nom
+         ORDER BY total DESC, h.nom ASC
+         LIMIT ?`,
+      )
+      .all(limite);
+  }
+
+  return resultats;
+}
+

@@ -32,8 +32,8 @@ import {
 import { listerUtilisateursSignales, bannirUtilisateur, debannirUtilisateur } from './src/repositories/moderation.repository.js';
 import { listerUtilisateurs, definirRole } from './src/repositories/utilisateur.repository.js';
 import { creerRegistre } from './src/services/messagerie.service.js';
-import { extraireHashtags, traiterHashtagsPublication, publicationsParHashtag } from './src/services/hashtag.service.js';
-import { ajouterAListeNoire, listerListeNoire, retirerDeListeNoire, listerHashtagsPopulaires, estInterdit } from './src/repositories/hashtag.repository.js';
+import { extraireHashtags, traiterHashtagsPublication, publicationsParHashtag, recupererTendances } from './src/services/hashtag.service.js';
+import { ajouterAListeNoire, listerListeNoire, retirerDeListeNoire, listerHashtagsPopulaires, estInterdit, obtenirTendancesHashtags } from './src/repositories/hashtag.repository.js';
 
 
 // ============================================================
@@ -645,5 +645,33 @@ describe('hashtag.service.js - extraction et liste noire', () => {
     const pop = listerHashtagsPopulaires(db);
     assert.ok(pop.some(p => p.nom === 'populaire'));
     assert.ok(!pop.some(p => p.nom === 'autre'));
+  });
+
+  it('obtenirTendancesHashtags et recupererTendances classent les hashtags par nombre d utilisations', () => {
+    const idPub2 = Number(
+      db.prepare('INSERT INTO publication (id_utilisateur, date, description) VALUES (1, CURRENT_TIMESTAMP, ?)')
+        .run('autre').lastInsertRowid,
+    );
+    traiterHashtagsPublication(db, idPublication, 'Post avec #tendance et #unique');
+    traiterHashtagsPublication(db, idPub2, 'Deuxième post avec #tendance');
+
+    const tendances = obtenirTendancesHashtags(db);
+    assert.ok(tendances.length >= 2);
+    assert.equal(tendances[0].nom, 'tendance');
+    assert.equal(tendances[0].total, 2);
+    assert.equal(tendances[1].nom, 'unique');
+    assert.equal(tendances[1].total, 1);
+
+    const enrichies = recupererTendances(db);
+    assert.equal(enrichies[0].rang, 1);
+    assert.equal(enrichies[0].nom, 'tendance');
+    assert.equal(enrichies[0].label, '2 publications');
+
+    // Si on interdit le hashtag numéro 1, il disparaît immédiatement des tendances
+    ajouterAListeNoire(db, 'tendance');
+    const apresInterdit = recupererTendances(db);
+    assert.ok(!apresInterdit.some(t => t.nom === 'tendance'));
+    assert.equal(apresInterdit[0].nom, 'unique');
+    assert.equal(apresInterdit[0].rang, 1);
   });
 });

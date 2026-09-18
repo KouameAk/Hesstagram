@@ -2,6 +2,7 @@ import {
   enregistrerHashtags,
   estInterdit,
   trouverPublicationsParHashtag,
+  obtenirTendancesHashtags,
 } from '../repositories/hashtag.repository.js';
 
 // Trouve les #motclé dans un texte, les normalise (minuscules, sans le #)
@@ -47,4 +48,14 @@ export function traiterHashtagsPublication(db, idPublication, description, hasht
 
 export function publicationsParHashtag(db, nom) {
   return trouverPublicationsParHashtag(db, nom.toLowerCase());
+}
+
+export function recupererTendances(db, options = {}) {
+  const liste = obtenirTendancesHashtags(db, options);
+  return liste.map((t, index) => ({
+    rang: index + 1,
+    nom: t.nom,
+    total: t.total,
+    label: `${t.total} publication${t.total > 1 ? 's' : ''}`
+  }));
 }
