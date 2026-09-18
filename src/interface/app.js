@@ -138,7 +138,8 @@ const ICONES = {
   tri: '<path d="M8 5v14M4.8 15.8 8 19l3.2-3.2M16 19V5M12.8 8.2 16 5l3.2 3.2"/>',
   cle: '<circle cx="8" cy="15" r="4"/><path d="m10.9 12.1 8.6-8.6M16.4 6.6l2.6 2.6M13.8 9.2l2 2"/>',
   activite: '<path d="M3.5 12h3.8l2.6-6.2 4.2 12.4 2.6-6.2h3.8"/>',
-  filtre: '<path d="M4 6h16M7 12h10M10 18h4"/>'
+  filtre: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+  recadrer: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>'
 };
 
 function icone(nom, classe = '') {

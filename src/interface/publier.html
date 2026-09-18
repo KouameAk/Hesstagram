@@ -16,7 +16,7 @@
   }
   .zone-depot .illu { width: 72px; height: 72px; border-radius: 24px; background: var(--bg); color: var(--faint); display: grid; place-items: center; }
   .zone-depot .illu .icone { width: 32px; height: 32px; }
-  .zone-depot.survol, .zone-depot.pret { border-color: var(--o-300); background: var(--o-50); }
+  .zone-depot.survol { border-color: var(--o-300); background: var(--o-50); }
   .zone-depot h3 { color: var(--ink); margin: 0; overflow-wrap: anywhere; }
   .zone-depot p { margin: 0; }
   .apercu { width: 100%; max-height: 420px; border-radius: var(--r-md); object-fit: contain; background: var(--bg); }
@@ -35,19 +35,34 @@
     </header>
 
     <div class="page" style="max-width:760px">
-      <div class="segmented" role="tablist" style="margin-bottom:18px">
-        <button class="active" data-onglet="photo" role="tab"><span data-ic="image"></span>Photo</button>
-        <button data-onglet="video" role="tab"><span data-ic="camera"></span>Vidéo</button>
+      <!-- Étape 1 : choix du fichier. Une fois un fichier valide déposé, on passe
+           directement à l'étape 2 (retouche + description) : voir passerAEtape2(). -->
+      <div id="etape-1">
+        <div class="segmented" role="tablist" style="margin-bottom:18px">
+          <button class="active" data-onglet="photo" role="tab"><span data-ic="image"></span>Photo</button>
+          <button data-onglet="video" role="tab"><span data-ic="camera"></span>Vidéo</button>
+        </div>
+
+        <div class="card card-pad">
+          <div class="zone-depot" id="depot">
+            <div class="illu" id="depot-illu"></div>
+            <h3 id="depot-titre"></h3>
+            <p id="depot-aide"></p>
+            <input class="champ-fichier" type="file" id="fichier">
+            <button class="btn btn-primary" type="button" id="choisir">Parcourir…</button>
+          </div>
+        </div>
       </div>
 
-      <form class="card card-pad" id="form-media" novalidate>
-        <div class="zone-depot" id="depot">
-          <div class="illu" id="depot-illu"></div>
-          <h3 id="depot-titre"></h3>
-          <p id="depot-aide"></p>
-          <input class="champ-fichier" type="file" id="fichier">
-          <button class="btn btn-primary" type="button" id="choisir">Parcourir…</button>
-        </div>
+      <!-- Étape 2 : la photo (avec recadrage/filtres) ou la vidéo choisie, la
+           description, et la publication — tout sur le même écran. -->
+      <form class="card card-pad" id="etape-2" novalidate hidden>
+        <button class="btn btn-ghost btn-sm" type="button" id="changer-fichier" style="margin-bottom:16px">
+          <span data-ic="retour"></span>Changer de fichier
+        </button>
+
+        <div id="zone-editeur-photo" hidden></div>
+        <video class="apercu" id="apercu-video" controls muted hidden></video>
 
         <div class="field" style="margin-top:16px">
           <label for="description">Description <span class="compteur" id="compteur">0 / 2200</span></label>
@@ -64,7 +79,7 @@
 
         <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
           <a class="btn" href="/accueil.html">Annuler</a>
-          <button class="btn btn-primary" type="submit" id="publier" disabled>Publier</button>
+          <button class="btn btn-primary" type="submit" id="publier">Publier</button>
         </div>
       </form>
     </div>
@@ -72,6 +87,7 @@
 </div>
 
 <script src="/app.js"></script>
+<script src="/editeur-image.js"></script>
 <script>
 // Routes du groupe (publication.routes.js) : multipart/form-data + token JWT.
 //   photo → POST /api/publications/photo (champ « photo », 20 Mo max)
@@ -89,46 +105,74 @@ const TYPES = {
   }
 };
 let onglet = 'photo';
-let fichier = null;
-let urlApercu = null;
+let fichier = null;         // fichier choisi (photo ou vidéo), envoyé tel quel pour une vidéo
+let urlApercu = null;       // URL objet de l'aperçu vidéo (les photos sont gérées par editeur-image.js)
+let editeur = null;         // instance de creerEditeurImage(), uniquement pour une photo (étape 2)
 const $ = id => document.getElementById(id);
+
+// ── Étape 1 : choix du type, puis du fichier ──
 
 function ouvrirOnglet(nom) {
   onglet = nom;
   const t = TYPES[nom];
   document.querySelectorAll('[data-onglet]').forEach(b => b.classList.toggle('active', b.dataset.onglet === nom));
   $('fichier').accept = t.accept;
-  $('description').placeholder = t.placeholder;
-  $('avis-video').hidden = nom !== 'video';
-  choisirFichier(null);
+  $('depot-illu').innerHTML = icone(t.icone);
+  $('depot-titre').textContent = t.titre;
+  $('depot-aide').textContent = t.aide;
 }
 
+// Valide la taille du fichier puis fait passer la page à l'étape 2. En cas de
+// fichier trop lourd, on reste sur l'étape 1 avec un message d'erreur.
 function choisirFichier(f) {
+  if (!f) return;
   const t = TYPES[onglet];
-  if (f && f.size > t.max * 1024 * 1024) {
+  if (f.size > t.max * 1024 * 1024) {
     toast(`Fichier trop lourd (${t.max} Mo maximum)`, { type: 'erreur' });
-    f = null;
+    $('fichier').value = '';
+    return;
   }
   fichier = f;
-  if (urlApercu) URL.revokeObjectURL(urlApercu);
-  urlApercu = f ? URL.createObjectURL(f) : null;
+  passerAEtape2();
+}
 
-  $('depot').classList.toggle('pret', Boolean(f));
-  $('depot-illu').hidden = Boolean(f);
-  $('depot-illu').innerHTML = icone(t.icone);
-  $('depot-titre').textContent = f ? f.name : t.titre;
-  $('depot-aide').textContent = f ? `${(f.size / 1024 / 1024).toFixed(1)} Mo` : t.aide;
-  $('choisir').textContent = f ? 'Changer de fichier' : 'Parcourir…';
-  $('depot').querySelector('.apercu')?.remove();
-  if (f) {
-    const apercu = document.createElement(onglet === 'video' ? 'video' : 'img');
-    apercu.className = 'apercu';
-    apercu.src = urlApercu;
-    if (onglet === 'video') { apercu.controls = true; apercu.muted = true; }
-    $('depot').prepend(apercu);
+// ── Étape 2 : retouche (photo) ou aperçu (vidéo), description, publication ──
+
+function passerAEtape2() {
+  $('etape-1').hidden = true;
+  $('etape-2').hidden = false;
+  $('avis-video').hidden = onglet !== 'video';
+  $('description').placeholder = TYPES[onglet].placeholder;
+
+  editeur?.detruire();
+  editeur = null;
+  if (onglet === 'photo') {
+    $('apercu-video').hidden = true;
+    $('zone-editeur-photo').hidden = false;
+    editeur = creerEditeurImage($('zone-editeur-photo'), fichier);
+  } else {
+    // Pas de retouche pour une vidéo ici : simple aperçu avec lecteur natif.
+    $('zone-editeur-photo').hidden = true;
+    if (urlApercu) URL.revokeObjectURL(urlApercu);
+    urlApercu = URL.createObjectURL(fichier);
+    const v = $('apercu-video');
+    v.src = urlApercu;
+    v.hidden = false;
   }
-  $('publier').disabled = !f;
-  if (!f) $('fichier').value = '';
+}
+
+// Retour à l'étape 1 : on oublie le fichier et l'état de retouche en cours.
+function revenirEtape1() {
+  editeur?.detruire();
+  editeur = null;
+  if (urlApercu) { URL.revokeObjectURL(urlApercu); urlApercu = null; }
+  $('apercu-video').removeAttribute('src');
+  fichier = null;
+  $('fichier').value = '';
+  $('description').value = '';
+  $('compteur').textContent = '0 / 2200';
+  $('etape-2').hidden = true;
+  $('etape-1').hidden = false;
 }
 
 // XMLHttpRequest plutôt que fetch : il donne la progression de l'envoi.
@@ -167,9 +211,10 @@ function envoyer(formData, t) {
   document.querySelectorAll('[data-onglet]').forEach(b => { b.onclick = () => ouvrirOnglet(b.dataset.onglet); });
   $('choisir').onclick = () => $('fichier').click();
   $('fichier').onchange = () => choisirFichier($('fichier').files[0] || null);
+  $('changer-fichier').onclick = revenirEtape1;
   $('description').oninput = () => { $('compteur').textContent = `${$('description').value.length} / 2200`; };
 
-  // Glisser-déposer
+  // Glisser-déposer (étape 1 uniquement)
   const depot = $('depot');
   depot.ondragover = e => { e.preventDefault(); depot.classList.add('survol'); };
   depot.ondragleave = () => depot.classList.remove('survol');
@@ -185,22 +230,25 @@ function envoyer(formData, t) {
 
   ouvrirOnglet(location.hash === '#video' ? 'video' : 'photo');
 
-  $('form-media').onsubmit = async e => {
+  $('etape-2').onsubmit = async e => {
     e.preventDefault();
     if (!fichier) return;
     const t = TYPES[onglet];
-    const donnees = new FormData();
-    donnees.append(t.champ, fichier);
-    donnees.append('description', $('description').value.trim());
 
     const bouton = $('publier');
     bouton.disabled = true;
     bouton.textContent = 'Publication…';
-    document.querySelectorAll('[data-onglet]').forEach(b => { b.disabled = true; });
+    $('changer-fichier').disabled = true;
     $('progression').hidden = false;
     $('etat').hidden = false;
     $('etat').textContent = t.envoi;
     try {
+      // Pour une photo, on exporte l'état courant de l'éditeur (recadrage +
+      // filtre) au tout dernier moment : c'est ce fichier-là qui est envoyé.
+      const fichierAEnvoyer = (onglet === 'photo' && editeur) ? await editeur.obtenirFichier() : fichier;
+      const donnees = new FormData();
+      donnees.append(t.champ, fichierAEnvoyer);
+      donnees.append('description', $('description').value.trim());
       await envoyer(donnees, t);
       toast(onglet === 'video' ? 'Vidéo publiée' : 'Photo publiée');
       setTimeout(() => { location.href = '/accueil.html'; }, 600);
@@ -208,7 +256,7 @@ function envoyer(formData, t) {
       toastErreur(err);
       bouton.disabled = false;
       bouton.textContent = 'Publier';
-      document.querySelectorAll('[data-onglet]').forEach(b => { b.disabled = false; });
+      $('changer-fichier').disabled = false;
       $('progression').hidden = true;
       $('etat').hidden = true;
       $('progression').firstElementChild.style.width = '0';
